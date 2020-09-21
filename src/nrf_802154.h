@@ -119,12 +119,12 @@ void nrf_802154_tx_power_set(int8_t power);
  */
 int8_t nrf_802154_tx_power_get(void);
 
+#if ENABLE_FEM
+
 /**
  * @defgroup nrf_802154_frontend Frontend Module management
  * @{
  */
-
-#if ENABLE_FEM
 
 /** Structure that contains the run-time configuration of the Frontend Module. */
 typedef nrf_fem_control_cfg_t nrf_802154_fem_control_cfg_t;

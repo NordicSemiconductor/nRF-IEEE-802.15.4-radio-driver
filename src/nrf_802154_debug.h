@@ -125,7 +125,7 @@ extern "C" {
 
 #define PIN_DBG_RADIO_EVT_END        13
 #define PIN_DBG_RADIO_EVT_DISABLED   14
-#define PIN_DBG_RADIO_EVT_READY      17
+#define PIN_DBG_RADIO_EVT_READY      21
 #define PIN_DBG_RADIO_EVT_FRAMESTART 18
 #define PIN_DBG_RADIO_EVT_EDEND      25
 

@@ -66,6 +66,7 @@ void nrf_802154_random_init(void)
 
     while (!NRF_RNG->EVENTS_VALRDY);
     NRF_RNG->EVENTS_VALRDY = 0;
+    NRF_RNG->TASKS_STOP    = 1;
 
     m_seed = NRF_RNG->VALUE;
 #endif // RAAL_SOFTDEVICE
