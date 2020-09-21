@@ -106,7 +106,7 @@ typedef struct
 #endif
 
 /** Default Eagle PDN pin. */
-#define NRF_FEM_CONTROL_DEFAULT_PDN_PIN            24
+#define NRF_FEM_CONTROL_DEFAULT_PDN_PIN            13
 
 /** Default PPI channel for pin setting. */
 #define NRF_FEM_CONTROL_DEFAULT_SET_PPI_CHANNEL    15

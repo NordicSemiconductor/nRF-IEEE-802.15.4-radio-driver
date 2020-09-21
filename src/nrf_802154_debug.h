@@ -128,16 +128,14 @@ extern "C" {
 #define PIN_DBG_RADIO_EVT_READY      17
 #define PIN_DBG_RADIO_EVT_FRAMESTART 18
 #define PIN_DBG_RADIO_EVT_EDEND      25
-#define PIN_DBG_RADIO_EVT_PHYEND     24
 
 #else
 
 #define PIN_DBG_RADIO_EVT_END        11
 #define PIN_DBG_RADIO_EVT_DISABLED   12
-#define PIN_DBG_RADIO_EVT_READY      13
+#define PIN_DBG_RADIO_EVT_READY      18
 #define PIN_DBG_RADIO_EVT_FRAMESTART 14
 #define PIN_DBG_RADIO_EVT_EDEND      25
-#define PIN_DBG_RADIO_EVT_PHYEND     24
 
 #endif
 
@@ -159,22 +157,19 @@ extern "C" {
                                                     (1 << PIN_DBG_RADIO_EVT_DISABLED) |   \
                                                     (1 << PIN_DBG_RADIO_EVT_READY) |      \
                                                     (1 << PIN_DBG_RADIO_EVT_FRAMESTART) | \
-                                                    (1 << PIN_DBG_RADIO_EVT_EDEND) |      \
-                                                    (1 << PIN_DBG_RADIO_EVT_PHYEND))
+                                                    (1 << PIN_DBG_RADIO_EVT_EDEND))
 
 #define NRF_802154_DEBUG_PPI_CHANNELS_USED_MASK    ((1 << PPI_DBG_RADIO_EVT_END) |        \
                                                     (1 << PPI_DBG_RADIO_EVT_DISABLED) |   \
                                                     (1 << PPI_DBG_RADIO_EVT_READY) |      \
                                                     (1 << PPI_DBG_RADIO_EVT_FRAMESTART) | \
-                                                    (1 << PPI_DBG_RADIO_EVT_EDEND) |      \
-                                                    (1 << PPI_DBG_RADIO_EVT_PHYEND))
+                                                    (1 << PPI_DBG_RADIO_EVT_EDEND))
 
 #define NRF_802154_DEBUG_GPIOTE_CHANNELS_USED_MASK ((1 << GPIOTE_DBG_RADIO_EVT_END) |        \
                                                     (1 << GPIOTE_DBG_RADIO_EVT_DISABLED) |   \
                                                     (1 << GPIOTE_DBG_RADIO_EVT_READY) |      \
                                                     (1 << GPIOTE_DBG_RADIO_EVT_FRAMESTART) | \
-                                                    (1 << GPIOTE_DBG_RADIO_EVT_EDEND) |      \
-                                                    (1 << GPIOTE_DBG_RADIO_EVT_PHYEND))
+                                                    (1 << GPIOTE_DBG_RADIO_EVT_EDEND))
 
 #else // ENABLE_DEBUG_GPIO
 

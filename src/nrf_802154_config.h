@@ -268,7 +268,7 @@ extern "C" {
  * The priority of RTC interrupt used in the standalone timer driver implementation.
  *
  * @note This configuration is only applicable for the Low Power Timer Abstraction Layer
- *       implementation in nrf_802154_lp_timer_nodrv.c.
+ *       implementation in nrf_802154_lp_timer.c.
  *
  */
 #ifndef NRF_802154_RTC_IRQ_PRIORITY
