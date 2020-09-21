@@ -3,14 +3,10 @@
         "_class": "nRF_drv_radio_802_15_4",
         "_description": "-",
         "_includes": [
-            "src",
-            "src/mac_features",
-            "src/mac_features/ack_generator",
-            "src/rsch"
+            "src"
         ],
         "_headers": [
             "src/nrf_802154.h",
-            "src/nrf_802154_ack_pending_bit.h",
             "src/nrf_802154_core_hooks.h",
             "src/nrf_802154_critical_section.h",
             "src/nrf_802154_debug.h",
@@ -25,6 +21,7 @@
             "src/nrf_802154_timer_coord.h",
             "src/mac_features/nrf_802154_filter.h",
             "src/mac_features/nrf_802154_frame_parser.h",
+            "src/mac_features/ack_generator/nrf_802154_ack_data.h",
             "src/mac_features/ack_generator/nrf_802154_ack_generator.h",
             "src/rsch/nrf_802154_rsch.h",
             "src/rsch/nrf_802154_rsch_crit_sect.h"
@@ -46,7 +43,6 @@
                 ],
                 "_files": [
                     "src/nrf_802154.c",
-                    "src/nrf_802154_ack_pending_bit.c",
                     "src/nrf_802154_core.c",
                     "src/nrf_802154_core_hooks.c",
                     "src/nrf_802154_critical_section.c",
@@ -56,6 +52,7 @@
                     "src/nrf_802154_rssi.c",
                     "src/nrf_802154_rx_buffer.c",
                     "src/nrf_802154_timer_coord.c",
+                    "src/fal/nrf_802154_fal.c",
                     "src/mac_features/nrf_802154_csma_ca.c",
                     "src/mac_features/nrf_802154_delayed_trx.c",
                     "src/mac_features/nrf_802154_filter.c",
@@ -68,6 +65,7 @@
                     "src/platform/clock/nrf_802154_clock_sdk.c",
                     "src/platform/hp_timer/nrf_802154_hp_timer.c",
                     "src/platform/lp_timer/nrf_802154_lp_timer_nodrv.c",
+                    "src/platform/random/nrf_802154_random_stdlib.c",
                     "src/platform/temperature/nrf_802154_temperature_none.c",
                     "src/rsch/nrf_802154_rsch.c",
                     "src/rsch/nrf_802154_rsch_crit_sect.c",
@@ -78,8 +76,11 @@
                     "src/nrf_802154_swi.c"
                 ],
                 "_links": [
+                    "nrfx_hal",
+                    "nrf_drv_clock",
                     ["s140"],
-                    "nrf52840_xxaa"
+                    "!mpsl",
+                    "!unity"
                 ],
                 "_name": "swi"
             },
@@ -89,7 +90,6 @@
                 ],
                 "_files": [
                     "src/nrf_802154.c",
-                    "src/nrf_802154_ack_pending_bit.c",
                     "src/nrf_802154_core.c",
                     "src/nrf_802154_core_hooks.c",
                     "src/nrf_802154_critical_section.c",
@@ -108,9 +108,9 @@
                     "src/mac_features/ack_generator/nrf_802154_ack_generator.c",
                     "src/mac_features/ack_generator/nrf_802154_enh_ack_generator.c",
                     "src/mac_features/ack_generator/nrf_802154_imm_ack_generator.c",
-                    "src/platform/clock/nrf_802154_clock_sdk.c",
                     "src/platform/hp_timer/nrf_802154_hp_timer.c",
                     "src/platform/lp_timer/nrf_802154_lp_timer_nodrv.c",
+                    "src/platform/random/nrf_802154_random_stdlib.c",
                     "src/platform/temperature/nrf_802154_temperature_none.c",
                     "src/rsch/nrf_802154_rsch.c",
                     "src/rsch/nrf_802154_rsch_crit_sect.c",
@@ -121,8 +121,10 @@
                     "src/nrf_802154_swi.c"
                 ],
                 "_links": [
+                    "nrfx_hal",
+                    ["mpsl"],
                     "!s140",
-                    "nrf52840_xxaa"
+                    "!unity"
                 ],
                 "_name": "rem"
             },
@@ -132,7 +134,6 @@
                 ],
                 "_files": [
                     "src/nrf_802154.c",
-                    "src/nrf_802154_ack_pending_bit.c",
                     "src/nrf_802154_core.c",
                     "src/nrf_802154_core_hooks.c",
                     "src/nrf_802154_critical_section.c",
@@ -142,13 +143,20 @@
                     "src/nrf_802154_rssi.c",
                     "src/nrf_802154_rx_buffer.c",
                     "src/nrf_802154_timer_coord.c",
-                    "src/mac_features/nrf_802154_precise_ack_timeout.c",
+                    "src/fal/nrf_802154_fal.c",
                     "src/mac_features/nrf_802154_csma_ca.c",
                     "src/mac_features/nrf_802154_delayed_trx.c",
                     "src/mac_features/nrf_802154_filter.c",
+                    "src/mac_features/nrf_802154_frame_parser.c",
+                    "src/mac_features/nrf_802154_precise_ack_timeout.c",
+                    "src/mac_features/ack_generator/nrf_802154_ack_data.c",
+                    "src/mac_features/ack_generator/nrf_802154_ack_generator.c",
+                    "src/mac_features/ack_generator/nrf_802154_enh_ack_generator.c",
+                    "src/mac_features/ack_generator/nrf_802154_imm_ack_generator.c",
                     "src/platform/clock/nrf_802154_clock_sdk.c",
                     "src/platform/hp_timer/nrf_802154_hp_timer.c",
                     "src/platform/lp_timer/nrf_802154_lp_timer_nodrv.c",
+                    "src/platform/random/nrf_802154_random_stdlib.c",
                     "src/platform/temperature/nrf_802154_temperature_none.c",
                     "src/rsch/nrf_802154_rsch.c",
                     "src/rsch/nrf_802154_rsch_crit_sect.c",
@@ -158,8 +166,11 @@
                     "src/nrf_802154_request_direct.c"
                 ],
                 "_links": [
+                    "nrfx_hal",
+                    "nrf_drv_clock",
                     "!s140",
-                    "nrf52840_xxaa"
+                    "!mpsl",
+                    "!unity"
                 ],
                 "_name": "direct"
             },
@@ -169,10 +180,11 @@
                 ],
                 "_links": [
                     ["unity"]
-                ],  
+                ],
                 "_files": [
                     "cmock\\mock_nrf_802154.c",
-                    "cmock\\mock_nrf_802154_ack_pending_bit.c",
+                    "cmock\\mock_nrf_802154_ack_data.c",
+                    "cmock\\mock_nrf_802154_ack_generator.c",
                     "cmock\\mock_nrf_802154_core_hooks.c",
                     "cmock\\mock_nrf_802154_critical_section.c",
                     "cmock\\mock_nrf_802154_debug.c",
@@ -188,14 +200,51 @@
                     "cmock\\mock_nrf_802154_rsch_crit_sect.c",
                     "cmock\\mock_nrf_802154_rssi.c",
                     "cmock\\mock_nrf_802154_rx_buffer.c",
-                    "cmock\\mock_nrf_802154_timer_coord.c",
-                    "cmock\\mock_nrf_802154_ack_generator.c"
+                    "cmock\\mock_nrf_802154_timer_coord.c"
                 ],
                 "_includes": [
-                    "3|cmock"
+                    "cmock",
+                    "src/mac_features",
+                    "src/mac_features/ack_generator",
+                    "src/rsch"
                 ],
                 "_name": "cmock"
-            }, 
+            },
+            {
+                "_attrs": [
+                    "private"
+                ],
+                "_links": [
+                    ["unity"]
+                ],
+                "_files": [
+                    "cmock\\mock_nrf_802154.c",
+                    "cmock\\mock_nrf_802154_ack_generator.c",
+                    "cmock\\mock_nrf_802154_core_hooks.c",
+                    "cmock\\mock_nrf_802154_critical_section.c",
+                    "cmock\\mock_nrf_802154_debug.c",
+                    "cmock\\mock_nrf_802154_filter.c",
+                    "cmock\\mock_nrf_802154_frame_parser.c",
+                    "cmock\\mock_nrf_802154_notification.c",
+                    "cmock\\mock_nrf_802154_pib.c",
+                    "cmock\\mock_nrf_802154_priority_drop.c",
+                    "cmock\\mock_nrf_802154_procedures_duration.c",
+                    "cmock\\mock_nrf_802154_request.c",
+                    "cmock\\mock_nrf_802154_revision.c",
+                    "cmock\\mock_nrf_802154_rsch.c",
+                    "cmock\\mock_nrf_802154_rsch_crit_sect.c",
+                    "cmock\\mock_nrf_802154_rssi.c",
+                    "cmock\\mock_nrf_802154_rx_buffer.c",
+                    "cmock\\mock_nrf_802154_timer_coord.c"
+                ],
+                "_includes": [
+                    "cmock",
+                    "src/mac_features",
+                    "src/mac_features/ack_generator",
+                    "src/rsch"
+                ],
+                "_name": "cmock_for_ack_data"
+            },
             {
                 "_attrs": [
                     "private"
@@ -212,11 +261,11 @@
             "src/rsch/raal/nrf_raal_api.h"
         ],
         "_links": [
-            "hal"
+            "nrfx_hal"
         ],
         "_includes": [
-            "src/rsch/raal",
-            "external/softdevice/s140/headers"
+            "external/softdevice/s140/headers",
+            "external/softdevice/s140/headers/nrf52"
         ],
         "_variants": [
             {
@@ -265,9 +314,6 @@
                 "_files": [
                     "src/rsch/raal/softdevice/nrf_raal_softdevice.c"
                 ],
-                "_includes": [
-                    "src/rsch/raal/softdevice"
-                ],
                 "_links": [
                     "nrf_drivers",
                     "softdevice_sim",
@@ -278,15 +324,16 @@
             {
                 "_attrs": [
                     "private"
-                ], 
+                ],
                 "_files": [
                     "cmock\\mock_nrf_raal_api.c"
-                ], 
+                ],
                 "_includes": [
-                    "3|cmock"
-                ], 
+                    "cmock",
+                    "src/rsch/raal"
+                ],
                 "_name": "cmock"
-            }, 
+            },
             {
                 "_attrs": [
                     "private"
@@ -302,9 +349,6 @@
         "_headers": [
             "src/fem/nrf_fem_control_api.h"
         ],
-        "_includes": [
-            "src/fem"
-        ],
         "_defines": [
             "ENABLE_FEM"
         ],
@@ -314,7 +358,7 @@
                     "public"
                 ],
                 "_links": [
-                    "hal"
+                    "nrfx_hal"
                 ],
                 "_files": [
                     "src/fem/nrf_fem_control.c"
@@ -325,69 +369,25 @@
                     "private"
                 ],
                 "_links": [
-                    "hal"
+                    "nrfx_hal"
                 ],
                 "_files": [
                     "cmock\\mock_nrf_fem_control_api.c"
-                ], 
-                "_includes": [
-                    "3|cmock"
-                ], 
-                "_name": "cmock"
-            }, 
-            {
-                "_attrs": [
-                    "private"
                 ],
-                "_name": "file_included_by_test"
-            }
-        ]
-    },
-
-    "hal": {
-        "_class": "nRF_drv_radio_802_15_4",
-        "_description": "HAL",
-        "_headers": [
-            "external/hal/nrf_egu.h",
-            "external/hal/nrf_ppi.h",
-            "external/hal/nrf_timer.h",
-            "src/hal/nrf_radio.h"
-        ],
-        "_includes": [
-            "external",
-            "external/hal",
-            "src/hal"
-        ],
-        "_variants": [
-            {
-                "_attrs": [
-                    "public"
-                ]
+                "_includes": [
+                    "cmock",
+                    "src/fem"
+                ],
+                "_name": "cmock"
             },
             {
                 "_attrs": [
                     "private"
-                ], 
-                "_files": [
-                    "cmock\\mock_nrf_egu.c",
-                    "cmock\\mock_nrf_ppi.c",
-                    "cmock\\mock_nrf_radio.c",
-                    "cmock\\mock_nrf_timer.c"
-                ], 
-                "_includes": [
-                    "3|cmock"
-                ], 
-                "_name": "cmock"
-            }, 
-            {
-                "_attrs": [
-                    "private"
                 ],
                 "_name": "file_included_by_test"
             }
         ]
     },
-
     "cli": {
         "_class": "nRF_drv_radio_802_15_4",
         "_description": "This option enables CLI.",

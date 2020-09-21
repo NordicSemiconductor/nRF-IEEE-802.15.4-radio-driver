@@ -35,8 +35,8 @@
 #include "nrf_802154_config.h"
 #include "nrf_802154_const.h"
 #include "mock_nrf_802154.h"
+#include "mock_nrf_802154_ack_data.h"
 #include "mock_nrf_802154_ack_generator.h"
-#include "mock_nrf_802154_ack_pending_bit.h"
 #include "mock_nrf_802154_core_hooks.h"
 #include "mock_nrf_802154_critical_section.h"
 #include "mock_nrf_802154_debug.h"
@@ -88,8 +88,8 @@ static void insert_frame_with_noack_to_buffer(void)
 
     m_buffer.free = true;
 
-    m_buffer.psdu[0] = 16;
-    m_buffer.psdu[1] = 0x41; // Data frame, no Ack Request
+    m_buffer.data[0] = 16;
+    m_buffer.data[1] = 0x41; // Data frame, no Ack Request
 
     m_flags.frame_filtered = true;
 }
@@ -100,22 +100,22 @@ static void insert_frame_with_ack_request_to_buffer(void)
 
     m_buffer.free = true;
 
-    m_buffer.psdu[0] = 16;
-    m_buffer.psdu[1] = 0x61; // Data frame, Ack Request
+    m_buffer.data[0] = 16;
+    m_buffer.data[1] = 0x61; // Data frame, Ack Request
 
     m_flags.frame_filtered = true;
 }
 
 static void verify_setting_packet_ptr(void)
 {
-    nrf_radio_packet_ptr_set_Expect(m_buffer.psdu);
+    nrf_radio_packetptr_set_Expect(m_buffer.data);
 }
 
 static void verify_setting_tx_power(void)
 {
     int8_t tx_power = rand();
     nrf_802154_pib_tx_power_get_ExpectAndReturn(tx_power);
-    nrf_radio_tx_power_set_Expect(tx_power);
+    nrf_radio_txpower_set_Expect(tx_power);
 }
 
 static void received_notification_verify(void)
@@ -134,7 +134,7 @@ static void received_notification_verify(void)
     nrf_radio_rssi_sample_get_ExpectAndReturn(rssi);
     nrf_802154_rssi_sample_corrected_get_ExpectAndReturn(rssi, corrected_rssi);
     nrf_802154_rssi_lqi_corrected_get_IgnoreAndReturn(corrected_lqi);
-    nrf_802154_notify_received_Expect(m_buffer.psdu, -corrected_rssi, expected_lqi);
+    nrf_802154_notify_received_Expect(m_buffer.data, -corrected_rssi, expected_lqi);
     nrf_802154_critical_section_nesting_deny_Expect();
 }
 
@@ -204,7 +204,7 @@ static void verify_receive_begin_setup(uint32_t shorts)
     nrf_ppi_task_address_get_ExpectAndReturn(PPI_CHGRP0_DIS_TASK,
                                              (uint32_t *)task2_addr);
     task_addr = rand();
-    nrf_radio_task_address_get_ExpectAndReturn(NRF_RADIO_TASK_RXEN, (uint32_t *)task_addr);
+    nrf_radio_task_address_get_ExpectAndReturn(NRF_RADIO_TASK_RXEN, task_addr);
     event_addr = rand();
     nrf_egu_event_address_get_ExpectAndReturn(NRF_802154_SWI_EGU_INSTANCE,
                                               EGU_EVENT,
@@ -226,7 +226,7 @@ static void verify_receive_begin_setup(uint32_t shorts)
     task_addr = rand();
     nrf_egu_task_address_get_ExpectAndReturn(NRF_802154_SWI_EGU_INSTANCE, EGU_TASK, (uint32_t *)task_addr);
     event_addr = rand();
-    nrf_radio_event_address_get_ExpectAndReturn(NRF_RADIO_EVENT_DISABLED, (uint32_t *)event_addr);
+    nrf_radio_event_address_get_ExpectAndReturn(NRF_RADIO_EVENT_DISABLED, event_addr);
     nrf_ppi_channel_endpoint_setup_Expect(PPI_DISABLED_EGU, event_addr, task_addr);
 
     nrf_ppi_channel_enable_Expect(PPI_EGU_RAMP_UP);
@@ -234,7 +234,7 @@ static void verify_receive_begin_setup(uint32_t shorts)
     nrf_ppi_channel_enable_Expect(PPI_DISABLED_EGU);
 
     event_addr = rand();
-    nrf_radio_event_address_get_ExpectAndReturn(NRF_RADIO_EVENT_CRCOK, (uint32_t *)event_addr);
+    nrf_radio_event_address_get_ExpectAndReturn(NRF_RADIO_EVENT_CRCOK, event_addr);
     nrf_802154_timer_coord_timestamp_prepare_Expect(event_addr);
 }
 
@@ -317,7 +317,7 @@ void test_receive_begin_ShallNotTriggerDisableIfRampDownIsInProgress(void)
                                NRF_RADIO_SHORT_END_DISABLE_MASK |
                                NRF_RADIO_SHORT_ADDRESS_BCSTART_MASK);
 
-    nrf_radio_state_get_ExpectAndReturn(NRF_RADIO_STATE_TX_DISABLE);
+    nrf_radio_state_get_ExpectAndReturn(NRF_RADIO_STATE_TXDISABLE);
 
     verify_receive_begin_finds_free_buffer();
 
@@ -400,12 +400,12 @@ void test_receive_begin_ShallSetNewBufferIfFound(void)
     memset(&new_buffer, 0, sizeof(new_buffer));
     new_buffer.free = true;
     nrf_802154_rx_buffer_free_find_ExpectAndReturn(&new_buffer);
-    nrf_radio_packet_ptr_set_Expect(&new_buffer);
+    nrf_radio_packetptr_set_Expect(&new_buffer);
     nrf_radio_shorts_set_Expect(NRF_RADIO_SHORT_ADDRESS_RSSISTART_MASK |
                                 NRF_RADIO_SHORT_END_DISABLE_MASK |
                                 NRF_RADIO_SHORT_RXREADY_START_MASK |
                                 NRF_RADIO_SHORT_ADDRESS_BCSTART_MASK);
-    nrf_radio_state_get_ExpectAndReturn(NRF_RADIO_STATE_RX_RU);
+    nrf_radio_state_get_ExpectAndReturn(NRF_RADIO_STATE_RXRU);
 
     rx_init(false);
 }
@@ -427,12 +427,12 @@ void test_receive_begin_ShallTriggerStartIfNewBufferFoundAndShortDidNotWork(void
     memset(&new_buffer, 0, sizeof(new_buffer));
     new_buffer.free = true;
     nrf_802154_rx_buffer_free_find_ExpectAndReturn(&new_buffer);
-    nrf_radio_packet_ptr_set_Expect(&new_buffer);
+    nrf_radio_packetptr_set_Expect(&new_buffer);
     nrf_radio_shorts_set_Expect(NRF_RADIO_SHORT_ADDRESS_RSSISTART_MASK |
                                 NRF_RADIO_SHORT_END_DISABLE_MASK |
                                 NRF_RADIO_SHORT_RXREADY_START_MASK |
                                 NRF_RADIO_SHORT_ADDRESS_BCSTART_MASK);
-    nrf_radio_state_get_ExpectAndReturn(NRF_RADIO_STATE_RX_IDLE);
+    nrf_radio_state_get_ExpectAndReturn(NRF_RADIO_STATE_RXIDLE);
     nrf_radio_task_trigger_Expect(NRF_RADIO_TASK_START);
 
     rx_init(false);
@@ -506,8 +506,8 @@ static void crcok_ack_periph_set_verify(void)
 
     nrf_802154_pib_auto_ack_get_ExpectAndReturn(true);
 
-    nrf_802154_ack_generator_create_ExpectAndReturn(m_buffer.psdu, p_ack);
-    nrf_radio_packet_ptr_set_Expect(p_ack);
+    nrf_802154_ack_generator_create_ExpectAndReturn(m_buffer.data, p_ack);
+    nrf_radio_packetptr_set_Expect(p_ack);
 
     nrf_802154_revision_has_phyend_event_ExpectAndReturn(true);
     nrf_radio_shorts_set_Expect(NRF_RADIO_SHORT_TXREADY_START_MASK |
@@ -516,7 +516,7 @@ static void crcok_ack_periph_set_verify(void)
     nrf_radio_event_clear_Expect(NRF_RADIO_EVENT_TXREADY);
 
     task_addr = rand();
-    nrf_radio_task_address_get_ExpectAndReturn(NRF_RADIO_TASK_TXEN, (uint32_t *)task_addr);
+    nrf_radio_task_address_get_ExpectAndReturn(NRF_RADIO_TASK_TXEN, task_addr);
     event_addr = rand();
     nrf_timer_event_address_get_ExpectAndReturn(NRF_802154_TIMER_INSTANCE, NRF_TIMER_EVENT_COMPARE1, (uint32_t *)event_addr);
     nrf_ppi_channel_endpoint_setup_Expect(PPI_TIMER_TX_ACK, event_addr, task_addr);
@@ -539,8 +539,8 @@ void test_crcok_handler_ShallPreparePeriphsToTransmitAckIfRequested(void)
 
     nrf_802154_pib_auto_ack_get_ExpectAndReturn(true);
 
-    nrf_802154_ack_generator_create_ExpectAndReturn(m_buffer.psdu, p_ack);
-    nrf_radio_packet_ptr_set_Expect(p_ack);
+    nrf_802154_ack_generator_create_ExpectAndReturn(m_buffer.data, p_ack);
+    nrf_radio_packetptr_set_Expect(p_ack);
 
     nrf_802154_revision_has_phyend_event_ExpectAndReturn(true);
     nrf_radio_shorts_set_Expect(NRF_RADIO_SHORT_TXREADY_START_MASK |
@@ -549,7 +549,7 @@ void test_crcok_handler_ShallPreparePeriphsToTransmitAckIfRequested(void)
     nrf_radio_event_clear_Expect(NRF_RADIO_EVENT_TXREADY);
 
     task_addr = rand();
-    nrf_radio_task_address_get_ExpectAndReturn(NRF_RADIO_TASK_TXEN, (uint32_t *)task_addr);
+    nrf_radio_task_address_get_ExpectAndReturn(NRF_RADIO_TASK_TXEN, task_addr);
     event_addr = rand();
     nrf_timer_event_address_get_ExpectAndReturn(NRF_802154_TIMER_INSTANCE, NRF_TIMER_EVENT_COMPARE1, (uint32_t *)event_addr);
     nrf_ppi_channel_endpoint_setup_Expect(PPI_TIMER_TX_ACK, event_addr, task_addr);
@@ -648,7 +648,7 @@ void test_crcok_handler_ShallWaitForPhyendEventIfTransmitterIsRampingUp(void)
     nrf_timer_cc_read_ExpectAndReturn(NRF_802154_TIMER_INSTANCE, NRF_TIMER_CC_CHANNEL3, timer_cc3);
     nrf_timer_cc_read_ExpectAndReturn(NRF_802154_TIMER_INSTANCE, NRF_TIMER_CC_CHANNEL1, timer_cc1);
 
-    nrf_radio_state_get_ExpectAndReturn(NRF_RADIO_STATE_TX_RU);
+    nrf_radio_state_get_ExpectAndReturn(NRF_RADIO_STATE_TXRU);
 
     nrf_radio_int_disable_Expect(NRF_RADIO_INT_CRCERROR_MASK |
                                  NRF_RADIO_INT_BCMATCH_MASK  |
@@ -678,7 +678,7 @@ void test_crcok_handler_ShallWaitForPhyendEventIfTransmitterEndedRampingUp(void)
     nrf_timer_cc_read_ExpectAndReturn(NRF_802154_TIMER_INSTANCE, NRF_TIMER_CC_CHANNEL1, timer_cc1);
     nrf_radio_state_get_ExpectAndReturn(NRF_RADIO_STATE_TX);
 
-    nrf_radio_event_get_ExpectAndReturn(NRF_RADIO_EVENT_TXREADY, true);
+    nrf_radio_event_check_ExpectAndReturn(NRF_RADIO_EVENT_TXREADY, true);
 
     nrf_radio_int_disable_Expect(NRF_RADIO_INT_CRCERROR_MASK |
                                  NRF_RADIO_INT_BCMATCH_MASK  |
@@ -708,7 +708,7 @@ void test_crcok_handler_ShallNotifyReceivedFrameAndStartRxIfTransmitterDidNotRam
     nrf_timer_cc_read_ExpectAndReturn(NRF_802154_TIMER_INSTANCE, NRF_TIMER_CC_CHANNEL3, timer_cc3);
     nrf_timer_cc_read_ExpectAndReturn(NRF_802154_TIMER_INSTANCE, NRF_TIMER_CC_CHANNEL1, timer_cc1);
     nrf_radio_state_get_ExpectAndReturn(NRF_RADIO_STATE_TX);
-    nrf_radio_event_get_ExpectAndReturn(NRF_RADIO_EVENT_TXREADY, false);
+    nrf_radio_event_check_ExpectAndReturn(NRF_RADIO_EVENT_TXREADY, false);
 
     nrf_ppi_channel_disable_Expect(PPI_TIMER_TX_ACK);
 
@@ -719,7 +719,7 @@ void test_crcok_handler_ShallNotifyReceivedFrameAndStartRxIfTransmitterDidNotRam
     verify_receive_begin_setup(NRF_RADIO_SHORT_ADDRESS_RSSISTART_MASK |
                                NRF_RADIO_SHORT_END_DISABLE_MASK |
                                NRF_RADIO_SHORT_ADDRESS_BCSTART_MASK);
-    nrf_radio_state_get_ExpectAndReturn(NRF_RADIO_STATE_TX_DISABLE);
+    nrf_radio_state_get_ExpectAndReturn(NRF_RADIO_STATE_TXDISABLE);
     verify_receive_begin_finds_free_buffer();
 
     received_notification_verify();
@@ -750,7 +750,7 @@ static void crcok_noack_periph_reset_verify(void)
     nrf_ppi_channel_enable_Expect(PPI_DISABLED_EGU);
 
     event_addr = rand();
-    nrf_radio_event_address_get_ExpectAndReturn(NRF_RADIO_EVENT_CRCOK, (uint32_t *)event_addr);
+    nrf_radio_event_address_get_ExpectAndReturn(NRF_RADIO_EVENT_CRCOK, event_addr);
     nrf_802154_timer_coord_timestamp_prepare_Expect(event_addr);
 
 }
@@ -772,7 +772,7 @@ void test_crcok_handler_ShallResetReceiverAndNotifyIfAckNotRequested(void)
 
     crcok_noack_periph_reset_verify();
 
-    nrf_radio_state_get_ExpectAndReturn(NRF_RADIO_STATE_RX_DISABLE);
+    nrf_radio_state_get_ExpectAndReturn(NRF_RADIO_STATE_RXDISABLE);
 
     nrf_802154_rx_buffer_free_find_ExpectAndReturn(NULL);
 
@@ -780,7 +780,7 @@ void test_crcok_handler_ShallResetReceiverAndNotifyIfAckNotRequested(void)
     nrf_radio_rssi_sample_get_ExpectAndReturn(rssi);
     nrf_802154_rssi_sample_corrected_get_ExpectAndReturn(rssi, corrected_rssi);
     nrf_802154_rssi_lqi_corrected_get_IgnoreAndReturn(corrected_lqi);
-    nrf_802154_notify_received_Expect(m_buffer.psdu, -corrected_rssi, expected_lqi);
+    nrf_802154_notify_received_Expect(m_buffer.data, -corrected_rssi, expected_lqi);
     nrf_802154_critical_section_nesting_deny_Expect();
 
     irq_crcok_state_rx();
@@ -829,15 +829,15 @@ void test_crcok_handler_ShallFindNewRxBufferAndUpdateShortsIfFound(void)
     insert_frame_with_noack_to_buffer();
 
     crcok_noack_periph_reset_verify();
-    nrf_radio_state_get_ExpectAndReturn(NRF_RADIO_STATE_RX_DISABLE);
+    nrf_radio_state_get_ExpectAndReturn(NRF_RADIO_STATE_RXDISABLE);
 
     nrf_802154_rx_buffer_free_find_ExpectAndReturn(&buffer);
-    nrf_radio_packet_ptr_set_Expect(&buffer);
+    nrf_radio_packetptr_set_Expect(&buffer);
     nrf_radio_shorts_set_Expect(NRF_RADIO_SHORT_ADDRESS_RSSISTART_MASK |
                                 NRF_RADIO_SHORT_RXREADY_START_MASK     |
                                 NRF_RADIO_SHORT_END_DISABLE_MASK       |
                                 NRF_RADIO_SHORT_ADDRESS_BCSTART_MASK);
-    nrf_radio_state_get_ExpectAndReturn(NRF_RADIO_STATE_RX_RU);
+    nrf_radio_state_get_ExpectAndReturn(NRF_RADIO_STATE_RXRU);
 
     received_notification_verify();
 
@@ -855,15 +855,15 @@ void test_crcok_handler_ShallFindNewRxBufferAndTriggerStartIfShortDidNotWork(voi
     insert_frame_with_noack_to_buffer();
 
     crcok_noack_periph_reset_verify();
-    nrf_radio_state_get_ExpectAndReturn(NRF_RADIO_STATE_RX_DISABLE);
+    nrf_radio_state_get_ExpectAndReturn(NRF_RADIO_STATE_RXDISABLE);
 
     nrf_802154_rx_buffer_free_find_ExpectAndReturn(&buffer);
-    nrf_radio_packet_ptr_set_Expect(&buffer);
+    nrf_radio_packetptr_set_Expect(&buffer);
     nrf_radio_shorts_set_Expect(NRF_RADIO_SHORT_ADDRESS_RSSISTART_MASK |
                                 NRF_RADIO_SHORT_RXREADY_START_MASK     |
                                 NRF_RADIO_SHORT_END_DISABLE_MASK       |
                                 NRF_RADIO_SHORT_ADDRESS_BCSTART_MASK);
-    nrf_radio_state_get_ExpectAndReturn(NRF_RADIO_STATE_RX_IDLE);
+    nrf_radio_state_get_ExpectAndReturn(NRF_RADIO_STATE_RXIDLE);
     nrf_radio_task_trigger_Expect(NRF_RADIO_TASK_START);
 
     received_notification_verify();
@@ -910,7 +910,7 @@ static void verify_phyend_tx_ack_periph_reset(void)
     nrf_ppi_channel_enable_Expect(PPI_DISABLED_EGU);
 
     event_addr = rand();
-    nrf_radio_event_address_get_ExpectAndReturn(NRF_RADIO_EVENT_CRCOK, (uint32_t *)event_addr);
+    nrf_radio_event_address_get_ExpectAndReturn(NRF_RADIO_EVENT_CRCOK, event_addr);
     nrf_802154_timer_coord_timestamp_prepare_Expect(event_addr);
 }
 
@@ -952,11 +952,11 @@ void test_phyend_handler_ShallResetPeripheralsForRxStateAndNotfiThatFrameWasRece
     nrf_ppi_channel_enable_Expect(PPI_DISABLED_EGU);
 
     event_addr = rand();
-    nrf_radio_event_address_get_ExpectAndReturn(NRF_RADIO_EVENT_CRCOK, (uint32_t *)event_addr);
+    nrf_radio_event_address_get_ExpectAndReturn(NRF_RADIO_EVENT_CRCOK, event_addr);
     nrf_802154_timer_coord_timestamp_prepare_Expect(event_addr);
 
     // Detect if EGU worked or is going to work.
-    nrf_radio_state_get_ExpectAndReturn(NRF_RADIO_STATE_TX_DISABLE);
+    nrf_radio_state_get_ExpectAndReturn(NRF_RADIO_STATE_TXDISABLE);
 
     // Find new RX buffer
     nrf_802154_rx_buffer_free_find_ExpectAndReturn(NULL);
@@ -1005,11 +1005,11 @@ void test_phyend_handler_ShallResetEndEventIfPhyendIsNotSupported(void)
     nrf_ppi_channel_enable_Expect(PPI_DISABLED_EGU);
 
     event_addr = rand();
-    nrf_radio_event_address_get_ExpectAndReturn(NRF_RADIO_EVENT_CRCOK, (uint32_t *)event_addr);
+    nrf_radio_event_address_get_ExpectAndReturn(NRF_RADIO_EVENT_CRCOK, event_addr);
     nrf_802154_timer_coord_timestamp_prepare_Expect(event_addr);
 
     // Detect if EGU worked or is going to work.
-    nrf_radio_state_get_ExpectAndReturn(NRF_RADIO_STATE_TX_DISABLE);
+    nrf_radio_state_get_ExpectAndReturn(NRF_RADIO_STATE_TXDISABLE);
 
     // Find new RX buffer
     nrf_802154_rx_buffer_free_find_ExpectAndReturn(NULL);
@@ -1025,7 +1025,7 @@ void test_phyend_handler_ShallNotTriggerDisableIfStateIsNotDisabled(void)
 
     verify_phyend_tx_ack_periph_reset();
 
-    nrf_radio_state_get_ExpectAndReturn(NRF_RADIO_STATE_TX_DISABLE);
+    nrf_radio_state_get_ExpectAndReturn(NRF_RADIO_STATE_TXDISABLE);
 
     nrf_802154_rx_buffer_free_find_ExpectAndReturn(NULL);
 
@@ -1080,15 +1080,15 @@ void test_phyend_handler_ShallSetShortToStartReceiverIfBufferIsAvailable(void)
 
     verify_phyend_tx_ack_periph_reset();
 
-    nrf_radio_state_get_ExpectAndReturn(NRF_RADIO_STATE_TX_DISABLE);
+    nrf_radio_state_get_ExpectAndReturn(NRF_RADIO_STATE_TXDISABLE);
 
     nrf_802154_rx_buffer_free_find_ExpectAndReturn(&buffer);
-    nrf_radio_packet_ptr_set_Expect(&buffer);
+    nrf_radio_packetptr_set_Expect(&buffer);
     nrf_radio_shorts_set_Expect(NRF_RADIO_SHORT_ADDRESS_RSSISTART_MASK |
                                 NRF_RADIO_SHORT_RXREADY_START_MASK     |
                                 NRF_RADIO_SHORT_END_DISABLE_MASK       |
                                 NRF_RADIO_SHORT_ADDRESS_BCSTART_MASK);
-    nrf_radio_state_get_ExpectAndReturn(NRF_RADIO_STATE_RX_RU);
+    nrf_radio_state_get_ExpectAndReturn(NRF_RADIO_STATE_RXRU);
 
     received_notification_verify();
 
@@ -1106,15 +1106,15 @@ void test_phyend_handler_ShallStartReceiverIfBufferIsAvailableAndShortsDidNotWor
 
     verify_phyend_tx_ack_periph_reset();
 
-    nrf_radio_state_get_ExpectAndReturn(NRF_RADIO_STATE_TX_DISABLE);
+    nrf_radio_state_get_ExpectAndReturn(NRF_RADIO_STATE_TXDISABLE);
 
     nrf_802154_rx_buffer_free_find_ExpectAndReturn(&buffer);
-    nrf_radio_packet_ptr_set_Expect(&buffer);
+    nrf_radio_packetptr_set_Expect(&buffer);
     nrf_radio_shorts_set_Expect(NRF_RADIO_SHORT_ADDRESS_RSSISTART_MASK |
                                 NRF_RADIO_SHORT_RXREADY_START_MASK     |
                                 NRF_RADIO_SHORT_END_DISABLE_MASK       |
                                 NRF_RADIO_SHORT_ADDRESS_BCSTART_MASK);
-    nrf_radio_state_get_ExpectAndReturn(NRF_RADIO_STATE_RX_IDLE);
+    nrf_radio_state_get_ExpectAndReturn(NRF_RADIO_STATE_RXIDLE);
     nrf_radio_task_trigger_Expect(NRF_RADIO_TASK_START);
 
     received_notification_verify();
@@ -1218,10 +1218,10 @@ void test_irq_crcerror_state_rx_ShallReserRadioForRxAndNotifyReceiveFailed(void)
     nrf_ppi_channel_enable_Expect(PPI_DISABLED_EGU);
 
     event_addr = rand();
-    nrf_radio_event_address_get_ExpectAndReturn(NRF_RADIO_EVENT_CRCOK, (uint32_t *)event_addr);
+    nrf_radio_event_address_get_ExpectAndReturn(NRF_RADIO_EVENT_CRCOK, event_addr);
     nrf_802154_timer_coord_timestamp_prepare_Expect(event_addr);
 
-    nrf_radio_state_get_ExpectAndReturn(NRF_RADIO_STATE_RX_DISABLE);
+    nrf_radio_state_get_ExpectAndReturn(NRF_RADIO_STATE_RXDISABLE);
 
     nrf_802154_critical_section_nesting_allow_Expect();
     nrf_802154_notify_receive_failed_Expect(NRF_802154_RX_ERROR_INVALID_FCS);

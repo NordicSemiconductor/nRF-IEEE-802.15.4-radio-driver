@@ -162,6 +162,46 @@
                     return "Note over RAAL: Timeslot Request Result (" +  param + ")";
                 }
             },
+            {
+                id :  "EVENT_TIMESTAMP",
+                val:  0x0009,
+                draw: function(from, to, text, param)
+                {
+                    return "Note over RAAL: Timestamp: " +  param + " ms";
+                }
+            },
+            {
+                id :  "EVENT_TIMESLOT_STATE",
+                val:  0x000A,
+                draw: function(from, to, text, param)
+                {
+                    var ret = "Note over RAAL: ";
+
+                    switch (param)
+                    {
+                        case 0:
+                            ret += "TIMESLOT_STATE_IDLE";
+                        break;
+                        case 1:
+                            ret += "TIMESLOT_STATE_REQUESTED";
+                        break;
+                        case 2:
+                            ret += "TIMESLOT_STATE_GRANTED";
+                        break;
+                        case 3:
+                            ret += "TIMESLOT_STATE_BLOCKED";
+                        break;
+                        case 4:
+                            ret += "TIMESLOT_STATE_MARGIN";
+                        break;
+                        default:
+                            console.log("state = " + param);
+                            break;
+                    }
+
+                    return ret;
+                }
+            },
         ];
 
         var functions = [
@@ -212,6 +252,7 @@
             {id: "TIMESLOT_SESSION_IDLE", val: 0x0409, from: "RAAL", to: "RAAL", text: "EVENT_SESSION_IDLE"},
             {id: "EVENT_HFCLK_READY", val: 0x040A, from: "RAAL", to: "RAAL", text: "EVENT_HFCLK_READY"},
             {id: "TIMESLOT_MARGIN", val: 0x040B, from: "RAAL", to: "RAAL", text: "EVENT_MARGIN_MOVE"},
+            {id: "TIMESLOT_STOP", val: 0x040C, from: "RAAL", to: "RAAL", text: "EVENT_STOP"},
 
             {id: "RSCH_CONTINUOUS_ENTER", val: 0x0480, from: "DRIVER", to: "RSCH", text: "nrf_rsch_continuous_enter()"},
             {id: "RSCH_CONTINUOUS_EXIT", val: 0x0481, from: "DRIVER", to: "RSCH", text: "nrf_rsch_continuous_exit()"},
@@ -219,11 +260,6 @@
             {id: "RSCH_CRITICAL_SECTION_EXIT", val: 0x0483, from: "DRIVER", to: "RSCH", text: "nrf_rsch_critical_section_exit()"},
             {id: "RSCH_TIMESLOT_STARTED", val: 0x0484, from: "RAAL", to: "RSCH", text: "nrf_raal_timeslot_started()"},
             {id: "RSCH_TIMESLOT_ENDED", val: 0x0485, from: "RAAL", to: "RSCH", text: "nrf_raal_timeslot_ended()"},
-            {id: "RSCH_PEND_GRANTED", val: 0x0486, from: "RSCH", to: "RSCH", text: "nrf_802154_rsch_pend_granted()"},
-            {id: "RSCH_PEND_REVOKED", val: 0x0487, from: "RSCH", to: "RSCH", text: "nrf_802154_rsch_pend_revoked()"},
-            {id: "RSCH_NOTIFY_GRANTED", val: 0x0488, from: "RSCH", to: "RSCH", text: "nrf_802154_rsch_notify_granted()"},
-            {id: "RSCH_NOTIFY_REVOKED", val: 0x0489, from: "RSCH", to: "RSCH", text: "nrf_802154_rsch_notify_revoked()"},
-            {id: "RSCH_NOTIFY_IF_PENDING", val: 0x048A, from: "RSCH", to: "RSCH", text: "nrf_802154_rsch_notify_if_pending()"},
             {id: "RSCH_DELAYED_TIMESLOT_REQ", val: 0x048B, from: "DRIVER", to: "RSCH", text: "nrf_802154_rsch_delayed_timeslot_request()"},
             {id: "RSCH_TIMER_DELAYED_PREC", val: 0x048C, from: "TSCH", to: "RSCH", text: "delayed_timeslot_prec_request()"},
             {id: "RSCH_TIMER_DELAYED_START", val: 0x048D, from: "TSCH", to: "RSCH", text: "delayed_timeslot_start()"},
@@ -242,6 +278,20 @@
             {id: "TCOOR_TIMESTAMP_PREPARE", val: 0x0702, from: "DRIVER", to: "TCOOR", text: "nrf_802154_timer_coord_timestamp_prepare()"},
             {id: "TCOOR_TIMESTAMP_GET", val: 0x0703, from: "DRIVER", to: "TCOOR", text: "nrf_802154_timer_coord_timestamp_get()"},
             {id: "TCOOR_SYNCHRONIZED", val: 0x0704, from: "TCOOR", to: "TCOOR", text: "nrf_802154_lp_timer_synchronized()"},
+
+            {id: "DTRX_RX_TIMEOUT", val: 0x0800, from: "TSCH", to: "DTRX", text: "notify_rx_timeout()"},
+
+            {id: "ACK_TIMEOUT_FIRED", val: 0x0900, from: "TSCH", to: "ACK_TIMEOUT", text: "timeout_timer_fired()"},
+
+            {id: "FUNCTION_mutex_trylock", val: 0x1000, from: "RSCH", to: "RSCH", text: "mutex_trylock()"},
+            {id: "FUNCTION_mutex_unlock", val: 0x1001, from: "RSCH", to: "RSCH", text: "mutex_unlock()"},
+            {id: "FUNCTION_max_prio_for_delayed_timeslot_get", val: 0x1002, from: "RSCH", to: "RSCH", text: "max_prio_for_delayed_timeslot_get()"},
+            {id: "FUNCTION_required_prio_lvl_get", val: 0x1003, from: "RSCH", to: "RSCH", text: "required_prio_lvl_get()"},
+            {id: "FUNCTION_prec_approved_prio_set", val: 0x1004, from: "RSCH", to: "RSCH", text: "prec_approved_prio_set()"},
+            {id: "FUNCTION_all_prec_update", val: 0x1005, from: "RSCH", to: "RSCH", text: "all_prec_update()"},
+            {id: "FUNCTION_approved_prio_lvl_get", val: 0x1006, from: "RSCH", to: "RSCH", text: "approved_prio_lvl_get()"},
+            {id: "FUNCTION_requested_prio_lvl_is_at_least", val: 0x1007, from: "RSCH", to: "RSCH", text: "requested_prio_lvl_is_at_least()"},
+            {id: "FUNCTION_notify_core", val: 0x1008, from: "RSCH", to: "RSCH", text: "notify_core()"},
         ];
 
         var debugDecoder = function(debug_json, debug_ptr)
@@ -306,7 +356,7 @@
                 }
 
                 var event    = hexValue & 0xffff;
-                var func     = hexValue >> 16;
+                var func     = hexValue >>> 16;
 
                 var event_id = this.getEventIndex(event);
                 var func_id  = this.getFunctionIndex(func);
@@ -343,7 +393,9 @@
         debugDecoder.prototype.draw = function()
         {
             this.addLine("Participant APP");
+            this.addLine("Participant ACK_TIMEOUT");
             this.addLine("Participant CSMACA");
+            this.addLine("Participant DTRX");
             this.addLine("Participant TSCH");
             this.addLine("Participant TCOOR");
             this.addLine("Participant DRIVER");

@@ -35,7 +35,7 @@
 #include "nrf_802154_config.h"
 #include "nrf_802154_const.h"
 #include "mock_nrf_802154.h"
-#include "mock_nrf_802154_ack_pending_bit.h"
+#include "mock_nrf_802154_ack_data.h"
 #include "mock_nrf_802154_core_hooks.h"
 #include "mock_nrf_802154_critical_section.h"
 #include "mock_nrf_802154_debug.h"
@@ -95,9 +95,9 @@ static void insert_frame_2015_with_ack_request_to_tx_buffer(void)
 
 static void insert_ack_2015_to_rx_buffer(void)
 {
-    m_rx_buffer.psdu[0] = 5;
-    m_rx_buffer.psdu[1] = 0x42;
-    m_rx_buffer.psdu[2] = 0x28;
+    m_rx_buffer.data[0] = 5;
+    m_rx_buffer.data[1] = 0x42;
+    m_rx_buffer.data[2] = 0x28;
 }
 
 static void mark_rx_buffer_occupied(void)
@@ -116,14 +116,14 @@ static void mark_rx_buffer_free(void)
 
 static void verify_setting_tx_packet_ptr(void)
 {
-    nrf_radio_packet_ptr_set_Expect(m_tx_buffer);
+    nrf_radio_packetptr_set_Expect(m_tx_buffer);
 }
 
 static void verify_setting_tx_power(void)
 {
     int8_t tx_power = rand();
     nrf_802154_pib_tx_power_get_ExpectAndReturn(tx_power);
-    nrf_radio_tx_power_set_Expect(tx_power);
+    nrf_radio_txpower_set_Expect(tx_power);
 }
 
 static void verify_transmitted_notification_noack(void)
@@ -167,7 +167,7 @@ static void verify_transmitted_notification_ack(void)
 
     nrf_802154_core_hooks_transmitted_Expect(m_tx_buffer);
     nrf_802154_notify_transmitted_Expect(m_tx_buffer,
-                                         m_rx_buffer.psdu,
+                                         m_rx_buffer.data,
                                          -corrected_rssi,
                                          expected_lqi);
 
@@ -214,7 +214,7 @@ static void verify_receive_begin_setup(uint32_t shorts)
     nrf_ppi_task_address_get_ExpectAndReturn(PPI_CHGRP0_DIS_TASK,
                                              (uint32_t *)task2_addr);
     task_addr = rand();
-    nrf_radio_task_address_get_ExpectAndReturn(NRF_RADIO_TASK_RXEN, (uint32_t *)task_addr);
+    nrf_radio_task_address_get_ExpectAndReturn(NRF_RADIO_TASK_RXEN, task_addr);
     event_addr = rand();
     nrf_egu_event_address_get_ExpectAndReturn(NRF_802154_SWI_EGU_INSTANCE,
                                               EGU_EVENT,
@@ -236,7 +236,7 @@ static void verify_receive_begin_setup(uint32_t shorts)
     task_addr = rand();
     nrf_egu_task_address_get_ExpectAndReturn(NRF_802154_SWI_EGU_INSTANCE, EGU_TASK, (uint32_t *)task_addr);
     event_addr = rand();
-    nrf_radio_event_address_get_ExpectAndReturn(NRF_RADIO_EVENT_DISABLED, (uint32_t *)event_addr);
+    nrf_radio_event_address_get_ExpectAndReturn(NRF_RADIO_EVENT_DISABLED, event_addr);
     nrf_ppi_channel_endpoint_setup_Expect(PPI_DISABLED_EGU, event_addr, task_addr);
 
     nrf_ppi_channel_enable_Expect(PPI_EGU_RAMP_UP);
@@ -244,7 +244,7 @@ static void verify_receive_begin_setup(uint32_t shorts)
     nrf_ppi_channel_enable_Expect(PPI_DISABLED_EGU);
 
     event_addr = rand();
-    nrf_radio_event_address_get_ExpectAndReturn(NRF_RADIO_EVENT_CRCOK, (uint32_t *)event_addr);
+    nrf_radio_event_address_get_ExpectAndReturn(NRF_RADIO_EVENT_CRCOK, event_addr);
     nrf_802154_timer_coord_timestamp_prepare_Expect(event_addr);
 }
 
@@ -264,12 +264,12 @@ static void verify_complete_receive_begin(bool free_buffer)
 
     if (free_buffer)
     {
-        nrf_radio_packet_ptr_set_Expect(&m_rx_buffer.psdu);
+        nrf_radio_packetptr_set_Expect(&m_rx_buffer.data);
         shorts |= NRF_RADIO_SHORT_RXREADY_START_MASK;
     }
 
     verify_receive_begin_setup(shorts);
-    nrf_radio_state_get_ExpectAndReturn(NRF_RADIO_STATE_TX_DISABLE);
+    nrf_radio_state_get_ExpectAndReturn(NRF_RADIO_STATE_TXDISABLE);
 
     if (!free_buffer)
     {
@@ -295,13 +295,13 @@ static void verify_complete_ack_matching_disable(void)
 
 static void verify_complete_ack_is_matched(void)
 {
-    nrf_radio_event_get_ExpectAndReturn(NRF_RADIO_EVENT_MHRMATCH, true);
-    nrf_radio_crc_status_get_ExpectAndReturn(NRF_RADIO_CRC_STATUS_OK);
+    nrf_radio_event_check_ExpectAndReturn(NRF_RADIO_EVENT_MHRMATCH, true);
+    nrf_radio_crc_status_check_ExpectAndReturn(true);
 }
 
 static void verify_complete_ack_is_not_matched(void)
 {
-    nrf_radio_event_get_ExpectAndReturn(NRF_RADIO_EVENT_MHRMATCH, false);
+    nrf_radio_event_check_ExpectAndReturn(NRF_RADIO_EVENT_MHRMATCH, false);
 }
 
 void setUp(void)
@@ -345,7 +345,7 @@ void test_transmit_begin_ShallDoNothingIfTimeslotIsNotGranted(void)
 {
     verify_timeslot_request(false, false);
 
-    tx_init(m_rx_buffer.psdu, false, false);
+    tx_init(m_rx_buffer.data, false, false);
 }
 
 // Basic peripheral setup if CCA is not performed
@@ -404,7 +404,7 @@ static void verify_transmit_begin_periph_setup(bool cca)
                                          NRF_TIMER_CC_CHANNEL0,
                                          NRF_TIMER_SHORT_COMPARE0_STOP_MASK);
         event_addr = rand();
-        nrf_radio_event_address_get_ExpectAndReturn(NRF_RADIO_EVENT_CCAIDLE, (uint32_t *)event_addr);
+        nrf_radio_event_address_get_ExpectAndReturn(NRF_RADIO_EVENT_CCAIDLE, event_addr);
         nrf_fem_control_ppi_pin_task_setup_Expect(PPI_CCAIDLE_FEM, event_addr, false, true);
     }
     else
@@ -430,7 +430,7 @@ static void verify_transmit_begin_periph_setup(bool cca)
     nrf_ppi_task_address_get_ExpectAndReturn(PPI_CHGRP0_DIS_TASK, (uint32_t *)task_addr2);
     task_addr1 = rand();
     nrf_radio_task_address_get_ExpectAndReturn(cca ? NRF_RADIO_TASK_RXEN : NRF_RADIO_TASK_TXEN,
-                                               (uint32_t *)task_addr1);
+                                               task_addr1);
     event_addr = rand();
     nrf_egu_event_address_get_ExpectAndReturn(NRF_802154_SWI_EGU_INSTANCE, EGU_EVENT, (uint32_t *)event_addr);
     nrf_ppi_channel_and_fork_endpoint_setup_Expect(PPI_EGU_RAMP_UP, event_addr, task_addr1, task_addr2);
@@ -438,7 +438,7 @@ static void verify_transmit_begin_periph_setup(bool cca)
     task_addr1 = rand();
     nrf_egu_task_address_get_ExpectAndReturn(NRF_802154_SWI_EGU_INSTANCE, EGU_TASK, (uint32_t *)task_addr1);
     event_addr = rand();
-    nrf_radio_event_address_get_ExpectAndReturn(NRF_RADIO_EVENT_DISABLED, (uint32_t *)event_addr);
+    nrf_radio_event_address_get_ExpectAndReturn(NRF_RADIO_EVENT_DISABLED, event_addr);
     nrf_ppi_channel_endpoint_setup_Expect(PPI_DISABLED_EGU, event_addr, task_addr1);
 
     nrf_ppi_channel_include_in_group_Expect(PPI_EGU_RAMP_UP, PPI_CHGRP0);
@@ -487,7 +487,7 @@ void test_transmit_begin_ShallPrepareHardwareToTransmit(void)
     task_addr2 = rand();
     nrf_ppi_task_address_get_ExpectAndReturn(PPI_CHGRP0_DIS_TASK, (uint32_t *)task_addr2);
     task_addr1 = rand();
-    nrf_radio_task_address_get_ExpectAndReturn(NRF_RADIO_TASK_TXEN, (uint32_t *)task_addr1);
+    nrf_radio_task_address_get_ExpectAndReturn(NRF_RADIO_TASK_TXEN, task_addr1);
     event_addr = rand();
     nrf_egu_event_address_get_ExpectAndReturn(NRF_802154_SWI_EGU_INSTANCE, EGU_EVENT, (uint32_t *)event_addr);
     nrf_ppi_channel_and_fork_endpoint_setup_Expect(PPI_EGU_RAMP_UP, event_addr, task_addr1, task_addr2);
@@ -495,7 +495,7 @@ void test_transmit_begin_ShallPrepareHardwareToTransmit(void)
     task_addr1 = rand();
     nrf_egu_task_address_get_ExpectAndReturn(NRF_802154_SWI_EGU_INSTANCE, EGU_TASK, (uint32_t *)task_addr1);
     event_addr = rand();
-    nrf_radio_event_address_get_ExpectAndReturn(NRF_RADIO_EVENT_DISABLED, (uint32_t *)event_addr);
+    nrf_radio_event_address_get_ExpectAndReturn(NRF_RADIO_EVENT_DISABLED, event_addr);
     nrf_ppi_channel_endpoint_setup_Expect(PPI_DISABLED_EGU, event_addr, task_addr1);
 
     nrf_ppi_channel_include_in_group_Expect(PPI_EGU_RAMP_UP, PPI_CHGRP0);
@@ -547,7 +547,7 @@ void test_transmit_begin_ShallEnableEndEventIfPhyendIsNotAvailable(void)
     task_addr2 = rand();
     nrf_ppi_task_address_get_ExpectAndReturn(PPI_CHGRP0_DIS_TASK, (uint32_t *)task_addr2);
     task_addr1 = rand();
-    nrf_radio_task_address_get_ExpectAndReturn(NRF_RADIO_TASK_TXEN, (uint32_t *)task_addr1);
+    nrf_radio_task_address_get_ExpectAndReturn(NRF_RADIO_TASK_TXEN, task_addr1);
     event_addr = rand();
     nrf_egu_event_address_get_ExpectAndReturn(NRF_802154_SWI_EGU_INSTANCE, EGU_EVENT, (uint32_t *)event_addr);
     nrf_ppi_channel_and_fork_endpoint_setup_Expect(PPI_EGU_RAMP_UP, event_addr, task_addr1, task_addr2);
@@ -555,7 +555,7 @@ void test_transmit_begin_ShallEnableEndEventIfPhyendIsNotAvailable(void)
     task_addr1 = rand();
     nrf_egu_task_address_get_ExpectAndReturn(NRF_802154_SWI_EGU_INSTANCE, EGU_TASK, (uint32_t *)task_addr1);
     event_addr = rand();
-    nrf_radio_event_address_get_ExpectAndReturn(NRF_RADIO_EVENT_DISABLED, (uint32_t *)event_addr);
+    nrf_radio_event_address_get_ExpectAndReturn(NRF_RADIO_EVENT_DISABLED, event_addr);
     nrf_ppi_channel_endpoint_setup_Expect(PPI_DISABLED_EGU, event_addr, task_addr1);
 
     nrf_ppi_channel_include_in_group_Expect(PPI_EGU_RAMP_UP, PPI_CHGRP0);
@@ -611,7 +611,7 @@ void test_transmit_begin_ShallEnableEndEventIfCcaRequestedAndPhyendIsNotAvailabl
                                      NRF_TIMER_CC_CHANNEL0,
                                      NRF_TIMER_SHORT_COMPARE0_STOP_MASK);
     event_addr = rand();
-    nrf_radio_event_address_get_ExpectAndReturn(NRF_RADIO_EVENT_CCAIDLE, (uint32_t *)event_addr);
+    nrf_radio_event_address_get_ExpectAndReturn(NRF_RADIO_EVENT_CCAIDLE, event_addr);
     nrf_fem_control_ppi_pin_task_setup_Expect(PPI_CCAIDLE_FEM, event_addr, false, true);
 
     task_addr1 = rand();
@@ -632,7 +632,7 @@ void test_transmit_begin_ShallEnableEndEventIfCcaRequestedAndPhyendIsNotAvailabl
     task_addr2 = rand();
     nrf_ppi_task_address_get_ExpectAndReturn(PPI_CHGRP0_DIS_TASK, (uint32_t *)task_addr2);
     task_addr1 = rand();
-    nrf_radio_task_address_get_ExpectAndReturn(NRF_RADIO_TASK_RXEN, (uint32_t *)task_addr1);
+    nrf_radio_task_address_get_ExpectAndReturn(NRF_RADIO_TASK_RXEN, task_addr1);
     event_addr = rand();
     nrf_egu_event_address_get_ExpectAndReturn(NRF_802154_SWI_EGU_INSTANCE, EGU_EVENT, (uint32_t *)event_addr);
     nrf_ppi_channel_and_fork_endpoint_setup_Expect(PPI_EGU_RAMP_UP, event_addr, task_addr1, task_addr2);
@@ -640,7 +640,7 @@ void test_transmit_begin_ShallEnableEndEventIfCcaRequestedAndPhyendIsNotAvailabl
     task_addr1 = rand();
     nrf_egu_task_address_get_ExpectAndReturn(NRF_802154_SWI_EGU_INSTANCE, EGU_TASK, (uint32_t *)task_addr1);
     event_addr = rand();
-    nrf_radio_event_address_get_ExpectAndReturn(NRF_RADIO_EVENT_DISABLED, (uint32_t *)event_addr);
+    nrf_radio_event_address_get_ExpectAndReturn(NRF_RADIO_EVENT_DISABLED, event_addr);
     nrf_ppi_channel_endpoint_setup_Expect(PPI_DISABLED_EGU, event_addr, task_addr1);
 
     nrf_ppi_channel_include_in_group_Expect(PPI_EGU_RAMP_UP, PPI_CHGRP0);
@@ -668,7 +668,7 @@ void test_transmit_begin_ShallNotTriggerDisableIfRadioIsRampingDown(void)
 {
     verify_transmit_begin_periph_setup(false);
 
-    nrf_radio_state_get_ExpectAndReturn(NRF_RADIO_STATE_RX_DISABLE);
+    nrf_radio_state_get_ExpectAndReturn(NRF_RADIO_STATE_RXDISABLE);
 
     tx_init(m_tx_buffer, false, true);
 }
@@ -803,7 +803,7 @@ static void verify_phyend_ack_req_periph_setup(uint32_t shorts, bool buffer_free
 
     if (buffer_free)
     {
-        nrf_radio_packet_ptr_set_Expect(m_rx_buffer.psdu);
+        nrf_radio_packetptr_set_Expect(m_rx_buffer.data);
     }
 
     nrf_802154_revision_has_phyend_event_ExpectAndReturn(true);
@@ -839,7 +839,7 @@ static void verify_phyend_ack_req_periph_setup(uint32_t shorts, bool buffer_free
     task_addr2 = rand();
     nrf_ppi_task_address_get_ExpectAndReturn(PPI_CHGRP0_DIS_TASK, (uint32_t *)task_addr2);
     task_addr1 = rand();
-    nrf_radio_task_address_get_ExpectAndReturn(NRF_RADIO_TASK_RXEN, (uint32_t *)task_addr1);
+    nrf_radio_task_address_get_ExpectAndReturn(NRF_RADIO_TASK_RXEN, task_addr1);
     event_addr = rand();
     nrf_egu_event_address_get_ExpectAndReturn(NRF_802154_SWI_EGU_INSTANCE, EGU_EVENT, (uint32_t *)event_addr);
     nrf_ppi_channel_and_fork_endpoint_setup_Expect(PPI_EGU_RAMP_UP, event_addr, task_addr1, task_addr2);
@@ -883,7 +883,7 @@ void test_phyend_handler_ShallSetPeriphToRxAckIfRequested(void)
                                        true);
 
     // Verify if PPI worked or is going to work
-    nrf_radio_state_get_ExpectAndReturn(NRF_RADIO_STATE_TX_DISABLE);
+    nrf_radio_state_get_ExpectAndReturn(NRF_RADIO_STATE_TXDISABLE);
 
     verify_complete_ack_matching_enable();
 
@@ -945,7 +945,7 @@ void test_phyend_handler_ShallTryToFindNewBufferIfNotAvailable(void)
                                        false);
 
     // Verify if PPI worked or is going to work
-    nrf_radio_state_get_ExpectAndReturn(NRF_RADIO_STATE_TX_DISABLE);
+    nrf_radio_state_get_ExpectAndReturn(NRF_RADIO_STATE_TXDISABLE);
 
     // Find free buffer
     nrf_802154_rx_buffer_free_find_ExpectAndReturn(NULL);
@@ -971,15 +971,15 @@ void test_phyend_handler_ShallUpdateShortsIfRxBufferIsFoundAfterPeriphIsSet(void
                                        false);
 
     // Verify if PPI worked or is going to work
-    nrf_radio_state_get_ExpectAndReturn(NRF_RADIO_STATE_TX_DISABLE);
+    nrf_radio_state_get_ExpectAndReturn(NRF_RADIO_STATE_TXDISABLE);
 
     // Find free buffer
     nrf_802154_rx_buffer_free_find_ExpectAndReturn(&rx_buffer);
-    nrf_radio_packet_ptr_set_Expect(&rx_buffer);
+    nrf_radio_packetptr_set_Expect(&rx_buffer);
     nrf_radio_shorts_set_Expect(NRF_RADIO_SHORT_ADDRESS_RSSISTART_MASK |
                                 NRF_RADIO_SHORT_END_DISABLE_MASK |
                                 NRF_RADIO_SHORT_RXREADY_START_MASK);
-    nrf_radio_state_get_ExpectAndReturn(NRF_RADIO_STATE_RX_RU);
+    nrf_radio_state_get_ExpectAndReturn(NRF_RADIO_STATE_RXRU);
 
     verify_complete_ack_matching_enable();
 
@@ -1002,15 +1002,15 @@ void test_phyend_handler_ShallTriggerStartIfRxBufferIsFoundTooLate(void)
                                        false);
 
     // Verify if PPI worked or is going to work
-    nrf_radio_state_get_ExpectAndReturn(NRF_RADIO_STATE_TX_DISABLE);
+    nrf_radio_state_get_ExpectAndReturn(NRF_RADIO_STATE_TXDISABLE);
 
     // Find free buffer
     nrf_802154_rx_buffer_free_find_ExpectAndReturn(&rx_buffer);
-    nrf_radio_packet_ptr_set_Expect(&rx_buffer);
+    nrf_radio_packetptr_set_Expect(&rx_buffer);
     nrf_radio_shorts_set_Expect(NRF_RADIO_SHORT_ADDRESS_RSSISTART_MASK |
                                 NRF_RADIO_SHORT_END_DISABLE_MASK |
                                 NRF_RADIO_SHORT_RXREADY_START_MASK);
-    nrf_radio_state_get_ExpectAndReturn(NRF_RADIO_STATE_RX_IDLE);
+    nrf_radio_state_get_ExpectAndReturn(NRF_RADIO_STATE_RXIDLE);
     nrf_radio_task_trigger_Expect(NRF_RADIO_TASK_START);
 
     verify_complete_ack_matching_enable();
@@ -1116,13 +1116,13 @@ void test_end_handler_ShallResetRadioToStartReceivingAndNotifyTransmittedFrameTy
     insert_frame_2015_with_ack_request_to_tx_buffer();
 
     verify_complete_ack_is_not_matched();
-    nrf_radio_crc_status_get_ExpectAndReturn(NRF_RADIO_CRC_STATUS_OK);
+    nrf_radio_crc_status_check_ExpectAndReturn(true);
 
     nrf_802154_frame_parser_mhr_parse_ExpectAndReturn(m_tx_buffer, NULL, true);
     nrf_802154_frame_parser_mhr_parse_IgnoreArg_p_fields();
     nrf_802154_frame_parser_mhr_parse_ReturnThruPtr_p_fields(&tx_data);
 
-    nrf_802154_frame_parser_mhr_parse_ExpectAndReturn(m_rx_buffer.psdu, NULL, true);
+    nrf_802154_frame_parser_mhr_parse_ExpectAndReturn(m_rx_buffer.data, NULL, true);
     nrf_802154_frame_parser_mhr_parse_IgnoreArg_p_fields();
     nrf_802154_frame_parser_mhr_parse_ReturnThruPtr_p_fields(&ack_data);
 
@@ -1156,13 +1156,13 @@ void test_end_handler_ShallResetRadioToStartReceivingAndNotifyTransmitFailedWhen
     insert_frame_2015_with_ack_request_to_tx_buffer();
 
     verify_complete_ack_is_not_matched();
-    nrf_radio_crc_status_get_ExpectAndReturn(NRF_RADIO_CRC_STATUS_OK);
+    nrf_radio_crc_status_check_ExpectAndReturn(true);
 
     nrf_802154_frame_parser_mhr_parse_ExpectAndReturn(m_tx_buffer, NULL, true);
     nrf_802154_frame_parser_mhr_parse_IgnoreArg_p_fields();
     nrf_802154_frame_parser_mhr_parse_ReturnThruPtr_p_fields(&tx_data);
 
-    nrf_802154_frame_parser_mhr_parse_ExpectAndReturn(m_rx_buffer.psdu, NULL, true);
+    nrf_802154_frame_parser_mhr_parse_ExpectAndReturn(m_rx_buffer.data, NULL, true);
     nrf_802154_frame_parser_mhr_parse_IgnoreArg_p_fields();
     nrf_802154_frame_parser_mhr_parse_ReturnThruPtr_p_fields(&ack_data);
 
@@ -1196,13 +1196,13 @@ void test_end_handler_ShallResetRadioToStartReceivingAndNotifyTransmitFailedWhen
     insert_frame_2015_with_ack_request_to_tx_buffer();
 
     verify_complete_ack_is_not_matched();
-    nrf_radio_crc_status_get_ExpectAndReturn(NRF_RADIO_CRC_STATUS_OK);
+    nrf_radio_crc_status_check_ExpectAndReturn(true);
 
     nrf_802154_frame_parser_mhr_parse_ExpectAndReturn(m_tx_buffer, NULL, true);
     nrf_802154_frame_parser_mhr_parse_IgnoreArg_p_fields();
     nrf_802154_frame_parser_mhr_parse_ReturnThruPtr_p_fields(&tx_data);
 
-    nrf_802154_frame_parser_mhr_parse_ExpectAndReturn(m_rx_buffer.psdu, NULL, true);
+    nrf_802154_frame_parser_mhr_parse_ExpectAndReturn(m_rx_buffer.data, NULL, true);
     nrf_802154_frame_parser_mhr_parse_IgnoreArg_p_fields();
     nrf_802154_frame_parser_mhr_parse_ReturnThruPtr_p_fields(&ack_data);
 
@@ -1235,13 +1235,13 @@ void test_end_handler_ShallResetRadioToStartReceivingAndNotifyTransmitFailedWhen
     insert_frame_2015_with_ack_request_to_tx_buffer();
 
     verify_complete_ack_is_not_matched();
-    nrf_radio_crc_status_get_ExpectAndReturn(NRF_RADIO_CRC_STATUS_OK);
+    nrf_radio_crc_status_check_ExpectAndReturn(true);
 
     nrf_802154_frame_parser_mhr_parse_ExpectAndReturn(m_tx_buffer, NULL, true);
     nrf_802154_frame_parser_mhr_parse_IgnoreArg_p_fields();
     nrf_802154_frame_parser_mhr_parse_ReturnThruPtr_p_fields(&tx_data);
 
-    nrf_802154_frame_parser_mhr_parse_ExpectAndReturn(m_rx_buffer.psdu, NULL, true);
+    nrf_802154_frame_parser_mhr_parse_ExpectAndReturn(m_rx_buffer.data, NULL, true);
     nrf_802154_frame_parser_mhr_parse_IgnoreArg_p_fields();
     nrf_802154_frame_parser_mhr_parse_ReturnThruPtr_p_fields(&ack_data);
 
@@ -1276,13 +1276,13 @@ void test_end_handler_ShallResetRadioToStartReceivingAndNotifyTransmitFailedWhen
     insert_frame_2015_with_ack_request_to_tx_buffer();
 
     verify_complete_ack_is_not_matched();
-    nrf_radio_crc_status_get_ExpectAndReturn(NRF_RADIO_CRC_STATUS_OK);
+    nrf_radio_crc_status_check_ExpectAndReturn(true);
 
     nrf_802154_frame_parser_mhr_parse_ExpectAndReturn(m_tx_buffer, NULL, true);
     nrf_802154_frame_parser_mhr_parse_IgnoreArg_p_fields();
     nrf_802154_frame_parser_mhr_parse_ReturnThruPtr_p_fields(&tx_data);
 
-    nrf_802154_frame_parser_mhr_parse_ExpectAndReturn(m_rx_buffer.psdu, NULL, false);
+    nrf_802154_frame_parser_mhr_parse_ExpectAndReturn(m_rx_buffer.data, NULL, false);
     nrf_802154_frame_parser_mhr_parse_IgnoreArg_p_fields();
 
     verify_rx_ack_terminate_hardware_reset(true);
@@ -1315,7 +1315,7 @@ void test_end_handler_ShallResetRadioToStartReceivingAndNotifyTransmitFailedWhen
     insert_frame_2015_with_ack_request_to_tx_buffer();
 
     verify_complete_ack_is_not_matched();
-    nrf_radio_crc_status_get_ExpectAndReturn(NRF_RADIO_CRC_STATUS_ERROR);
+    nrf_radio_crc_status_check_ExpectAndReturn(false);
 
     verify_rx_ack_terminate_hardware_reset(true);
     verify_complete_receive_begin(true);
@@ -1332,7 +1332,7 @@ void test_end_handler_ShallResetRadioToStartReceivingAndNotifyTransmitFailedWhen
     insert_ack_2015_to_rx_buffer();
     insert_frame_2015_with_ack_request_to_tx_buffer();
 
-    m_rx_buffer.psdu[FRAME_TYPE_OFFSET] |= FRAME_TYPE_MASK;
+    m_rx_buffer.data[FRAME_TYPE_OFFSET] |= FRAME_TYPE_MASK;
 
     verify_complete_ack_is_not_matched();
 
@@ -1351,7 +1351,7 @@ void test_end_handler_ShallResetRadioToStartReceivingAndNotifyTransmitFailedWhen
     insert_ack_2015_to_rx_buffer();
     insert_frame_2015_with_ack_request_to_tx_buffer();
 
-    m_rx_buffer.psdu[FRAME_VERSION_OFFSET] |= FRAME_VERSION_MASK;
+    m_rx_buffer.data[FRAME_VERSION_OFFSET] |= FRAME_VERSION_MASK;
 
     verify_complete_ack_is_not_matched();
 

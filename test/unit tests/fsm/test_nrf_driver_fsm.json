@@ -7,7 +7,11 @@
         "nrf_802154:cmock",
         "raal:cmock",
         "fem:cmock",
-        "hal:cmock"
+        "hal_nrf_egu:cmock",
+        "hal_nrf_ppi:cmock",
+        "hal_nrf_radio:cmock",
+        "hal_nrf_rtc:cmock",
+        "hal_nrf_timer:cmock"
     ],
     "_defines": [
         "NRF52840_XXAA"

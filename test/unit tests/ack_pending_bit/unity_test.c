@@ -33,6 +33,24 @@
 #include "nrf_802154_config.h"
 #include "nrf_802154_const.h"
 #include "mock_nrf_radio.h"
+#include "mock_nrf_802154.h"
+#include "mock_nrf_802154_ack_generator.h"
+#include "mock_nrf_802154_core_hooks.h"
+#include "mock_nrf_802154_critical_section.h"
+#include "mock_nrf_802154_debug.h"
+#include "mock_nrf_802154_filter.h"
+#include "mock_nrf_802154_frame_parser.h"
+#include "mock_nrf_802154_notification.h"
+#include "mock_nrf_802154_pib.h"
+#include "mock_nrf_802154_priority_drop.h"
+#include "mock_nrf_802154_procedures_duration.h"
+#include "mock_nrf_802154_request.h"
+#include "mock_nrf_802154_revision.h"
+#include "mock_nrf_802154_rsch.h"
+#include "mock_nrf_802154_rsch_crit_sect.h"
+#include "mock_nrf_802154_rssi.h"
+#include "mock_nrf_802154_rx_buffer.h"
+#include "mock_nrf_802154_timer_coord.h"
 
 #ifdef NRF_802154_PENDING_SHORT_ADDRESSES
     #undef NRF_802154_PENDING_SHORT_ADDRESSES
@@ -43,7 +61,7 @@
     #define NRF_802154_PENDING_EXTENDED_ADDRESSES 4
 #endif
 
-#include "nrf_802154_ack_pending_bit.c"
+#include "mac_features/ack_generator/nrf_802154_ack_data.c"
 
 /***********************************************************************************/
 /***********************************************************************************/
@@ -56,8 +74,8 @@ void setUp(void)
 
 void tearDown(void)
 {
-    memset(m_pending_extended, 0, sizeof(m_pending_extended));
-    memset(m_pending_short, 0xff, sizeof(m_pending_short));
+    memset(m_pending_bit.extended_addr, 0, sizeof(m_pending_bit.extended_addr));
+    memset(m_pending_bit.short_addr, 0xff, sizeof(m_pending_bit.short_addr));
 }
 
 /***********************************************************************************/
@@ -89,864 +107,887 @@ static uint8_t test_psdu_short[SHORT_ADDRESS_SIZE + SRC_ADDR_OFFSET_SHORT_DST] =
 
 void test_ShouldAddAddressToTheList(void)
 {
-     nrf_802154_ack_pending_bit_init();
+     nrf_802154_ack_data_init();
 
     bool result;
 
-    result = nrf_802154_ack_pending_bit_for_addr_set(test_addr_extended_1, true);
+    result = nrf_802154_ack_data_for_addr_set(test_addr_extended_1, true, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
     TEST_ASSERT_TRUE(result);
-    result = nrf_802154_ack_pending_bit_for_addr_set(test_addr_extended_3, true);
+    result = nrf_802154_ack_data_for_addr_set(test_addr_extended_3, true, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
     TEST_ASSERT_TRUE(result);
-    result = nrf_802154_ack_pending_bit_for_addr_set(test_addr_extended_4, true);
+    result = nrf_802154_ack_data_for_addr_set(test_addr_extended_4, true, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
     TEST_ASSERT_TRUE(result);
-    result = nrf_802154_ack_pending_bit_for_addr_set(test_addr_extended_2, true);
+    result = nrf_802154_ack_data_for_addr_set(test_addr_extended_2, true, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
     TEST_ASSERT_TRUE(result);
 
-    result = nrf_802154_ack_pending_bit_for_addr_set(test_addr_short_1, false);
+    result = nrf_802154_ack_data_for_addr_set(test_addr_short_1, false, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
     TEST_ASSERT_TRUE(result);
-    result = nrf_802154_ack_pending_bit_for_addr_set(test_addr_short_3, false);
+    result = nrf_802154_ack_data_for_addr_set(test_addr_short_3, false, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
     TEST_ASSERT_TRUE(result);
-    result = nrf_802154_ack_pending_bit_for_addr_set(test_addr_short_4, false);
+    result = nrf_802154_ack_data_for_addr_set(test_addr_short_4, false, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
     TEST_ASSERT_TRUE(result);
-    result = nrf_802154_ack_pending_bit_for_addr_set(test_addr_short_2, false);
+    result = nrf_802154_ack_data_for_addr_set(test_addr_short_2, false, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
     TEST_ASSERT_TRUE(result);
 }
 
 void test_ShouldFailToAddAddressToTheListWhenListIsFull(void)
 {
-    nrf_802154_ack_pending_bit_init();
+    nrf_802154_ack_data_init();
 
     bool result;
 
-    result = nrf_802154_ack_pending_bit_for_addr_set(test_addr_extended_1, true);
+    result = nrf_802154_ack_data_for_addr_set(test_addr_extended_1, true, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
     TEST_ASSERT_TRUE(result);
-    result = nrf_802154_ack_pending_bit_for_addr_set(test_addr_extended_2, true);
+    result = nrf_802154_ack_data_for_addr_set(test_addr_extended_2, true, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
     TEST_ASSERT_TRUE(result);
-    result = nrf_802154_ack_pending_bit_for_addr_set(test_addr_extended_3, true);
+    result = nrf_802154_ack_data_for_addr_set(test_addr_extended_3, true, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
     TEST_ASSERT_TRUE(result);
-    result = nrf_802154_ack_pending_bit_for_addr_set(test_addr_extended_4, true);
+    result = nrf_802154_ack_data_for_addr_set(test_addr_extended_4, true, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
     TEST_ASSERT_TRUE(result);
-    result = nrf_802154_ack_pending_bit_for_addr_set(test_addr_extended_5, true);
+    result = nrf_802154_ack_data_for_addr_set(test_addr_extended_5, true, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
     TEST_ASSERT_FALSE(result);
 
-    result = nrf_802154_ack_pending_bit_for_addr_set(test_addr_short_1, false);
+    result = nrf_802154_ack_data_for_addr_set(test_addr_short_1, false, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
     TEST_ASSERT_TRUE(result);
-    result = nrf_802154_ack_pending_bit_for_addr_set(test_addr_short_2, false);
+    result = nrf_802154_ack_data_for_addr_set(test_addr_short_2, false, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
     TEST_ASSERT_TRUE(result);
-    result = nrf_802154_ack_pending_bit_for_addr_set(test_addr_short_3, false);
+    result = nrf_802154_ack_data_for_addr_set(test_addr_short_3, false, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
     TEST_ASSERT_TRUE(result);
-    result = nrf_802154_ack_pending_bit_for_addr_set(test_addr_short_4, false);
+    result = nrf_802154_ack_data_for_addr_set(test_addr_short_4, false, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
     TEST_ASSERT_TRUE(result);
-    result = nrf_802154_ack_pending_bit_for_addr_set(test_addr_short_5, false);
+    result = nrf_802154_ack_data_for_addr_set(test_addr_short_5, false, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
     TEST_ASSERT_FALSE(result);
 }
 
 void test_ShouldKeepAscendingOrderAfterAddingExtendedAddressToTheList(void)
 {
-    nrf_802154_ack_pending_bit_init();
+    nrf_802154_ack_data_init();
 
     ///////////////////////////////////////////////////////////////////////////////////////////////
 
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_extended_1, true);
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_extended_2, true);
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_extended_3, true);
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_extended_4, true);
+    nrf_802154_ack_data_for_addr_set(test_addr_extended_1, true, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+    nrf_802154_ack_data_for_addr_set(test_addr_extended_2, true, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+    nrf_802154_ack_data_for_addr_set(test_addr_extended_3, true, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+    nrf_802154_ack_data_for_addr_set(test_addr_extended_4, true, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
 
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_1, m_pending_extended[0], sizeof(test_addr_extended_1));
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_2, m_pending_extended[1], sizeof(test_addr_extended_2));
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_3, m_pending_extended[2], sizeof(test_addr_extended_3));
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_4, m_pending_extended[3], sizeof(test_addr_extended_4));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_1, m_pending_bit.extended_addr[0], sizeof(test_addr_extended_1));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_2, m_pending_bit.extended_addr[1], sizeof(test_addr_extended_2));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_3, m_pending_bit.extended_addr[2], sizeof(test_addr_extended_3));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_4, m_pending_bit.extended_addr[3], sizeof(test_addr_extended_4));
 
-    nrf_802154_ack_pending_bit_for_addr_reset(true);
-
-    ///////////////////////////////////////////////////////////////////////////////////////////////
-
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_extended_1, true);
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_extended_2, true);
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_extended_4, true);
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_extended_3, true);
-
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_1, m_pending_extended[0], sizeof(test_addr_extended_1));
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_2, m_pending_extended[1], sizeof(test_addr_extended_2));
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_3, m_pending_extended[2], sizeof(test_addr_extended_3));
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_4, m_pending_extended[3], sizeof(test_addr_extended_4));
-
-    nrf_802154_ack_pending_bit_for_addr_reset(true);
+    nrf_802154_ack_data_reset(true, NRF_802154_ACK_DATA_PENDING_BIT);
 
     ///////////////////////////////////////////////////////////////////////////////////////////////
 
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_extended_1, true);
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_extended_3, true);
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_extended_2, true);
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_extended_4, true);
+    nrf_802154_ack_data_for_addr_set(test_addr_extended_1, true, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+    nrf_802154_ack_data_for_addr_set(test_addr_extended_2, true, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+    nrf_802154_ack_data_for_addr_set(test_addr_extended_4, true, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+    nrf_802154_ack_data_for_addr_set(test_addr_extended_3, true, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
 
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_1, m_pending_extended[0], sizeof(test_addr_extended_1));
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_2, m_pending_extended[1], sizeof(test_addr_extended_2));
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_3, m_pending_extended[2], sizeof(test_addr_extended_3));
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_4, m_pending_extended[3], sizeof(test_addr_extended_4));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_1, m_pending_bit.extended_addr[0], sizeof(test_addr_extended_1));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_2, m_pending_bit.extended_addr[1], sizeof(test_addr_extended_2));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_3, m_pending_bit.extended_addr[2], sizeof(test_addr_extended_3));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_4, m_pending_bit.extended_addr[3], sizeof(test_addr_extended_4));
 
-    nrf_802154_ack_pending_bit_for_addr_reset(true);
-
-    ///////////////////////////////////////////////////////////////////////////////////////////////
-
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_extended_1, true);
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_extended_3, true);
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_extended_4, true);
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_extended_2, true);
-
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_1, m_pending_extended[0], sizeof(test_addr_extended_1));
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_2, m_pending_extended[1], sizeof(test_addr_extended_2));
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_3, m_pending_extended[2], sizeof(test_addr_extended_3));
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_4, m_pending_extended[3], sizeof(test_addr_extended_4));
-
-    nrf_802154_ack_pending_bit_for_addr_reset(true);
+    nrf_802154_ack_data_reset(true, NRF_802154_ACK_DATA_PENDING_BIT);
 
     ///////////////////////////////////////////////////////////////////////////////////////////////
 
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_extended_1, true);
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_extended_4, true);
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_extended_2, true);
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_extended_3, true);
+    nrf_802154_ack_data_for_addr_set(test_addr_extended_1, true, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+    nrf_802154_ack_data_for_addr_set(test_addr_extended_3, true, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+    nrf_802154_ack_data_for_addr_set(test_addr_extended_2, true, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+    nrf_802154_ack_data_for_addr_set(test_addr_extended_4, true, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
 
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_1, m_pending_extended[0], sizeof(test_addr_extended_1));
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_2, m_pending_extended[1], sizeof(test_addr_extended_2));
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_3, m_pending_extended[2], sizeof(test_addr_extended_3));
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_4, m_pending_extended[3], sizeof(test_addr_extended_4));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_1, m_pending_bit.extended_addr[0], sizeof(test_addr_extended_1));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_2, m_pending_bit.extended_addr[1], sizeof(test_addr_extended_2));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_3, m_pending_bit.extended_addr[2], sizeof(test_addr_extended_3));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_4, m_pending_bit.extended_addr[3], sizeof(test_addr_extended_4));
 
-    nrf_802154_ack_pending_bit_for_addr_reset(true);
-
-    ///////////////////////////////////////////////////////////////////////////////////////////////
-
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_extended_1, true);
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_extended_4, true);
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_extended_3, true);
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_extended_2, true);
-
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_1, m_pending_extended[0], sizeof(test_addr_extended_1));
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_2, m_pending_extended[1], sizeof(test_addr_extended_2));
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_3, m_pending_extended[2], sizeof(test_addr_extended_3));
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_4, m_pending_extended[3], sizeof(test_addr_extended_4));
-
-    nrf_802154_ack_pending_bit_for_addr_reset(true);
+    nrf_802154_ack_data_reset(true, NRF_802154_ACK_DATA_PENDING_BIT);
 
     ///////////////////////////////////////////////////////////////////////////////////////////////
 
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_extended_2, true);
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_extended_1, true);
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_extended_3, true);
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_extended_4, true);
+    nrf_802154_ack_data_for_addr_set(test_addr_extended_1, true, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+    nrf_802154_ack_data_for_addr_set(test_addr_extended_3, true, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+    nrf_802154_ack_data_for_addr_set(test_addr_extended_4, true, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+    nrf_802154_ack_data_for_addr_set(test_addr_extended_2, true, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
 
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_1, m_pending_extended[0], sizeof(test_addr_extended_1));
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_2, m_pending_extended[1], sizeof(test_addr_extended_2));
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_3, m_pending_extended[2], sizeof(test_addr_extended_3));
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_4, m_pending_extended[3], sizeof(test_addr_extended_4));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_1, m_pending_bit.extended_addr[0], sizeof(test_addr_extended_1));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_2, m_pending_bit.extended_addr[1], sizeof(test_addr_extended_2));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_3, m_pending_bit.extended_addr[2], sizeof(test_addr_extended_3));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_4, m_pending_bit.extended_addr[3], sizeof(test_addr_extended_4));
 
-    nrf_802154_ack_pending_bit_for_addr_reset(true);
-
-    ///////////////////////////////////////////////////////////////////////////////////////////////
-
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_extended_2, true);
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_extended_1, true);
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_extended_4, true);
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_extended_3, true);
-
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_1, m_pending_extended[0], sizeof(test_addr_extended_1));
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_2, m_pending_extended[1], sizeof(test_addr_extended_2));
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_3, m_pending_extended[2], sizeof(test_addr_extended_3));
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_4, m_pending_extended[3], sizeof(test_addr_extended_4));
-
-    nrf_802154_ack_pending_bit_for_addr_reset(true);
+    nrf_802154_ack_data_reset(true, NRF_802154_ACK_DATA_PENDING_BIT);
 
     ///////////////////////////////////////////////////////////////////////////////////////////////
 
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_extended_2, true);
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_extended_3, true);
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_extended_1, true);
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_extended_4, true);
+    nrf_802154_ack_data_for_addr_set(test_addr_extended_1, true, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+    nrf_802154_ack_data_for_addr_set(test_addr_extended_4, true, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+    nrf_802154_ack_data_for_addr_set(test_addr_extended_2, true, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+    nrf_802154_ack_data_for_addr_set(test_addr_extended_3, true, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
 
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_1, m_pending_extended[0], sizeof(test_addr_extended_1));
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_2, m_pending_extended[1], sizeof(test_addr_extended_2));
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_3, m_pending_extended[2], sizeof(test_addr_extended_3));
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_4, m_pending_extended[3], sizeof(test_addr_extended_4));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_1, m_pending_bit.extended_addr[0], sizeof(test_addr_extended_1));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_2, m_pending_bit.extended_addr[1], sizeof(test_addr_extended_2));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_3, m_pending_bit.extended_addr[2], sizeof(test_addr_extended_3));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_4, m_pending_bit.extended_addr[3], sizeof(test_addr_extended_4));
 
-    nrf_802154_ack_pending_bit_for_addr_reset(true);
-
-    ///////////////////////////////////////////////////////////////////////////////////////////////
-
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_extended_2, true);
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_extended_3, true);
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_extended_4, true);
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_extended_1, true);
-
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_1, m_pending_extended[0], sizeof(test_addr_extended_1));
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_2, m_pending_extended[1], sizeof(test_addr_extended_2));
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_3, m_pending_extended[2], sizeof(test_addr_extended_3));
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_4, m_pending_extended[3], sizeof(test_addr_extended_4));
-
-    nrf_802154_ack_pending_bit_for_addr_reset(true);
+    nrf_802154_ack_data_reset(true, NRF_802154_ACK_DATA_PENDING_BIT);
 
     ///////////////////////////////////////////////////////////////////////////////////////////////
 
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_extended_2, true);
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_extended_4, true);
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_extended_1, true);
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_extended_3, true);
+    nrf_802154_ack_data_for_addr_set(test_addr_extended_1, true, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+    nrf_802154_ack_data_for_addr_set(test_addr_extended_4, true, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+    nrf_802154_ack_data_for_addr_set(test_addr_extended_3, true, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+    nrf_802154_ack_data_for_addr_set(test_addr_extended_2, true, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
 
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_1, m_pending_extended[0], sizeof(test_addr_extended_1));
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_2, m_pending_extended[1], sizeof(test_addr_extended_2));
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_3, m_pending_extended[2], sizeof(test_addr_extended_3));
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_4, m_pending_extended[3], sizeof(test_addr_extended_4));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_1, m_pending_bit.extended_addr[0], sizeof(test_addr_extended_1));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_2, m_pending_bit.extended_addr[1], sizeof(test_addr_extended_2));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_3, m_pending_bit.extended_addr[2], sizeof(test_addr_extended_3));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_4, m_pending_bit.extended_addr[3], sizeof(test_addr_extended_4));
 
-    nrf_802154_ack_pending_bit_for_addr_reset(true);
-
-    ///////////////////////////////////////////////////////////////////////////////////////////////
-
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_extended_2, true);
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_extended_4, true);
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_extended_3, true);
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_extended_1, true);
-
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_1, m_pending_extended[0], sizeof(test_addr_extended_1));
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_2, m_pending_extended[1], sizeof(test_addr_extended_2));
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_3, m_pending_extended[2], sizeof(test_addr_extended_3));
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_4, m_pending_extended[3], sizeof(test_addr_extended_4));
-
-    nrf_802154_ack_pending_bit_for_addr_reset(true);
+    nrf_802154_ack_data_reset(true, NRF_802154_ACK_DATA_PENDING_BIT);
 
     ///////////////////////////////////////////////////////////////////////////////////////////////
 
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_extended_3, true);
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_extended_1, true);
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_extended_2, true);
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_extended_4, true);
+    nrf_802154_ack_data_for_addr_set(test_addr_extended_2, true, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+    nrf_802154_ack_data_for_addr_set(test_addr_extended_1, true, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+    nrf_802154_ack_data_for_addr_set(test_addr_extended_3, true, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+    nrf_802154_ack_data_for_addr_set(test_addr_extended_4, true, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
 
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_1, m_pending_extended[0], sizeof(test_addr_extended_1));
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_2, m_pending_extended[1], sizeof(test_addr_extended_2));
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_3, m_pending_extended[2], sizeof(test_addr_extended_3));
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_4, m_pending_extended[3], sizeof(test_addr_extended_4));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_1, m_pending_bit.extended_addr[0], sizeof(test_addr_extended_1));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_2, m_pending_bit.extended_addr[1], sizeof(test_addr_extended_2));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_3, m_pending_bit.extended_addr[2], sizeof(test_addr_extended_3));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_4, m_pending_bit.extended_addr[3], sizeof(test_addr_extended_4));
 
-    nrf_802154_ack_pending_bit_for_addr_reset(true);
-
-    ///////////////////////////////////////////////////////////////////////////////////////////////
-
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_extended_3, true);
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_extended_1, true);
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_extended_4, true);
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_extended_2, true);
-
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_1, m_pending_extended[0], sizeof(test_addr_extended_1));
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_2, m_pending_extended[1], sizeof(test_addr_extended_2));
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_3, m_pending_extended[2], sizeof(test_addr_extended_3));
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_4, m_pending_extended[3], sizeof(test_addr_extended_4));
-
-    nrf_802154_ack_pending_bit_for_addr_reset(true);
+    nrf_802154_ack_data_reset(true, NRF_802154_ACK_DATA_PENDING_BIT);
 
     ///////////////////////////////////////////////////////////////////////////////////////////////
 
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_extended_3, true);
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_extended_2, true);
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_extended_1, true);
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_extended_4, true);
+    nrf_802154_ack_data_for_addr_set(test_addr_extended_2, true, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+    nrf_802154_ack_data_for_addr_set(test_addr_extended_1, true, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+    nrf_802154_ack_data_for_addr_set(test_addr_extended_4, true, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+    nrf_802154_ack_data_for_addr_set(test_addr_extended_3, true, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
 
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_1, m_pending_extended[0], sizeof(test_addr_extended_1));
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_2, m_pending_extended[1], sizeof(test_addr_extended_2));
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_3, m_pending_extended[2], sizeof(test_addr_extended_3));
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_4, m_pending_extended[3], sizeof(test_addr_extended_4));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_1, m_pending_bit.extended_addr[0], sizeof(test_addr_extended_1));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_2, m_pending_bit.extended_addr[1], sizeof(test_addr_extended_2));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_3, m_pending_bit.extended_addr[2], sizeof(test_addr_extended_3));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_4, m_pending_bit.extended_addr[3], sizeof(test_addr_extended_4));
 
-    nrf_802154_ack_pending_bit_for_addr_reset(true);
-
-    ///////////////////////////////////////////////////////////////////////////////////////////////
-
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_extended_3, true);
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_extended_2, true);
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_extended_4, true);
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_extended_1, true);
-
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_1, m_pending_extended[0], sizeof(test_addr_extended_1));
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_2, m_pending_extended[1], sizeof(test_addr_extended_2));
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_3, m_pending_extended[2], sizeof(test_addr_extended_3));
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_4, m_pending_extended[3], sizeof(test_addr_extended_4));
-
-    nrf_802154_ack_pending_bit_for_addr_reset(true);
+    nrf_802154_ack_data_reset(true, NRF_802154_ACK_DATA_PENDING_BIT);
 
     ///////////////////////////////////////////////////////////////////////////////////////////////
 
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_extended_3, true);
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_extended_4, true);
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_extended_1, true);
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_extended_2, true);
+    nrf_802154_ack_data_for_addr_set(test_addr_extended_2, true, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+    nrf_802154_ack_data_for_addr_set(test_addr_extended_3, true, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+    nrf_802154_ack_data_for_addr_set(test_addr_extended_1, true, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+    nrf_802154_ack_data_for_addr_set(test_addr_extended_4, true, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
 
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_1, m_pending_extended[0], sizeof(test_addr_extended_1));
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_2, m_pending_extended[1], sizeof(test_addr_extended_2));
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_3, m_pending_extended[2], sizeof(test_addr_extended_3));
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_4, m_pending_extended[3], sizeof(test_addr_extended_4));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_1, m_pending_bit.extended_addr[0], sizeof(test_addr_extended_1));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_2, m_pending_bit.extended_addr[1], sizeof(test_addr_extended_2));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_3, m_pending_bit.extended_addr[2], sizeof(test_addr_extended_3));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_4, m_pending_bit.extended_addr[3], sizeof(test_addr_extended_4));
 
-    nrf_802154_ack_pending_bit_for_addr_reset(true);
-
-    ///////////////////////////////////////////////////////////////////////////////////////////////
-
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_extended_3, true);
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_extended_4, true);
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_extended_2, true);
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_extended_1, true);
-
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_1, m_pending_extended[0], sizeof(test_addr_extended_1));
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_2, m_pending_extended[1], sizeof(test_addr_extended_2));
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_3, m_pending_extended[2], sizeof(test_addr_extended_3));
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_4, m_pending_extended[3], sizeof(test_addr_extended_4));
-
-    nrf_802154_ack_pending_bit_for_addr_reset(true);
+    nrf_802154_ack_data_reset(true, NRF_802154_ACK_DATA_PENDING_BIT);
 
     ///////////////////////////////////////////////////////////////////////////////////////////////
 
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_extended_4, true);
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_extended_1, true);
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_extended_2, true);
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_extended_3, true);
+    nrf_802154_ack_data_for_addr_set(test_addr_extended_2, true, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+    nrf_802154_ack_data_for_addr_set(test_addr_extended_3, true, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+    nrf_802154_ack_data_for_addr_set(test_addr_extended_4, true, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+    nrf_802154_ack_data_for_addr_set(test_addr_extended_1, true, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
 
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_1, m_pending_extended[0], sizeof(test_addr_extended_1));
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_2, m_pending_extended[1], sizeof(test_addr_extended_2));
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_3, m_pending_extended[2], sizeof(test_addr_extended_3));
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_4, m_pending_extended[3], sizeof(test_addr_extended_4));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_1, m_pending_bit.extended_addr[0], sizeof(test_addr_extended_1));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_2, m_pending_bit.extended_addr[1], sizeof(test_addr_extended_2));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_3, m_pending_bit.extended_addr[2], sizeof(test_addr_extended_3));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_4, m_pending_bit.extended_addr[3], sizeof(test_addr_extended_4));
 
-    nrf_802154_ack_pending_bit_for_addr_reset(true);
-
-    ///////////////////////////////////////////////////////////////////////////////////////////////
-
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_extended_4, true);
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_extended_1, true);
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_extended_3, true);
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_extended_2, true);
-
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_1, m_pending_extended[0], sizeof(test_addr_extended_1));
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_2, m_pending_extended[1], sizeof(test_addr_extended_2));
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_3, m_pending_extended[2], sizeof(test_addr_extended_3));
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_4, m_pending_extended[3], sizeof(test_addr_extended_4));
-
-    nrf_802154_ack_pending_bit_for_addr_reset(true);
+    nrf_802154_ack_data_reset(true, NRF_802154_ACK_DATA_PENDING_BIT);
 
     ///////////////////////////////////////////////////////////////////////////////////////////////
 
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_extended_4, true);
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_extended_2, true);
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_extended_1, true);
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_extended_3, true);
+    nrf_802154_ack_data_for_addr_set(test_addr_extended_2, true, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+    nrf_802154_ack_data_for_addr_set(test_addr_extended_4, true, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+    nrf_802154_ack_data_for_addr_set(test_addr_extended_1, true, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+    nrf_802154_ack_data_for_addr_set(test_addr_extended_3, true, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
 
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_1, m_pending_extended[0], sizeof(test_addr_extended_1));
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_2, m_pending_extended[1], sizeof(test_addr_extended_2));
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_3, m_pending_extended[2], sizeof(test_addr_extended_3));
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_4, m_pending_extended[3], sizeof(test_addr_extended_4));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_1, m_pending_bit.extended_addr[0], sizeof(test_addr_extended_1));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_2, m_pending_bit.extended_addr[1], sizeof(test_addr_extended_2));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_3, m_pending_bit.extended_addr[2], sizeof(test_addr_extended_3));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_4, m_pending_bit.extended_addr[3], sizeof(test_addr_extended_4));
 
-    nrf_802154_ack_pending_bit_for_addr_reset(true);
-
-    ///////////////////////////////////////////////////////////////////////////////////////////////
-
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_extended_4, true);
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_extended_2, true);
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_extended_3, true);
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_extended_1, true);
-
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_1, m_pending_extended[0], sizeof(test_addr_extended_1));
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_2, m_pending_extended[1], sizeof(test_addr_extended_2));
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_3, m_pending_extended[2], sizeof(test_addr_extended_3));
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_4, m_pending_extended[3], sizeof(test_addr_extended_4));
-
-    nrf_802154_ack_pending_bit_for_addr_reset(true);
+    nrf_802154_ack_data_reset(true, NRF_802154_ACK_DATA_PENDING_BIT);
 
     ///////////////////////////////////////////////////////////////////////////////////////////////
 
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_extended_4, true);
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_extended_3, true);
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_extended_1, true);
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_extended_2, true);
+    nrf_802154_ack_data_for_addr_set(test_addr_extended_2, true, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+    nrf_802154_ack_data_for_addr_set(test_addr_extended_4, true, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+    nrf_802154_ack_data_for_addr_set(test_addr_extended_3, true, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+    nrf_802154_ack_data_for_addr_set(test_addr_extended_1, true, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
 
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_1, m_pending_extended[0], sizeof(test_addr_extended_1));
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_2, m_pending_extended[1], sizeof(test_addr_extended_2));
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_3, m_pending_extended[2], sizeof(test_addr_extended_3));
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_4, m_pending_extended[3], sizeof(test_addr_extended_4));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_1, m_pending_bit.extended_addr[0], sizeof(test_addr_extended_1));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_2, m_pending_bit.extended_addr[1], sizeof(test_addr_extended_2));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_3, m_pending_bit.extended_addr[2], sizeof(test_addr_extended_3));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_4, m_pending_bit.extended_addr[3], sizeof(test_addr_extended_4));
 
-    nrf_802154_ack_pending_bit_for_addr_reset(true);
+    nrf_802154_ack_data_reset(true, NRF_802154_ACK_DATA_PENDING_BIT);
 
     ///////////////////////////////////////////////////////////////////////////////////////////////
 
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_extended_4, true);
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_extended_3, true);
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_extended_2, true);
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_extended_1, true);
+    nrf_802154_ack_data_for_addr_set(test_addr_extended_3, true, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+    nrf_802154_ack_data_for_addr_set(test_addr_extended_1, true, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+    nrf_802154_ack_data_for_addr_set(test_addr_extended_2, true, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+    nrf_802154_ack_data_for_addr_set(test_addr_extended_4, true, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
 
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_1, m_pending_extended[0], sizeof(test_addr_extended_1));
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_2, m_pending_extended[1], sizeof(test_addr_extended_2));
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_3, m_pending_extended[2], sizeof(test_addr_extended_3));
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_4, m_pending_extended[3], sizeof(test_addr_extended_4));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_1, m_pending_bit.extended_addr[0], sizeof(test_addr_extended_1));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_2, m_pending_bit.extended_addr[1], sizeof(test_addr_extended_2));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_3, m_pending_bit.extended_addr[2], sizeof(test_addr_extended_3));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_4, m_pending_bit.extended_addr[3], sizeof(test_addr_extended_4));
 
-    nrf_802154_ack_pending_bit_for_addr_reset(true);
+    nrf_802154_ack_data_reset(true, NRF_802154_ACK_DATA_PENDING_BIT);
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+
+    nrf_802154_ack_data_for_addr_set(test_addr_extended_3, true, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+    nrf_802154_ack_data_for_addr_set(test_addr_extended_1, true, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+    nrf_802154_ack_data_for_addr_set(test_addr_extended_4, true, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+    nrf_802154_ack_data_for_addr_set(test_addr_extended_2, true, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_1, m_pending_bit.extended_addr[0], sizeof(test_addr_extended_1));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_2, m_pending_bit.extended_addr[1], sizeof(test_addr_extended_2));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_3, m_pending_bit.extended_addr[2], sizeof(test_addr_extended_3));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_4, m_pending_bit.extended_addr[3], sizeof(test_addr_extended_4));
+
+    nrf_802154_ack_data_reset(true, NRF_802154_ACK_DATA_PENDING_BIT);
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+
+    nrf_802154_ack_data_for_addr_set(test_addr_extended_3, true, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+    nrf_802154_ack_data_for_addr_set(test_addr_extended_2, true, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+    nrf_802154_ack_data_for_addr_set(test_addr_extended_1, true, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+    nrf_802154_ack_data_for_addr_set(test_addr_extended_4, true, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_1, m_pending_bit.extended_addr[0], sizeof(test_addr_extended_1));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_2, m_pending_bit.extended_addr[1], sizeof(test_addr_extended_2));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_3, m_pending_bit.extended_addr[2], sizeof(test_addr_extended_3));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_4, m_pending_bit.extended_addr[3], sizeof(test_addr_extended_4));
+
+    nrf_802154_ack_data_reset(true, NRF_802154_ACK_DATA_PENDING_BIT);
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+
+    nrf_802154_ack_data_for_addr_set(test_addr_extended_3, true, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+    nrf_802154_ack_data_for_addr_set(test_addr_extended_2, true, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+    nrf_802154_ack_data_for_addr_set(test_addr_extended_4, true, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+    nrf_802154_ack_data_for_addr_set(test_addr_extended_1, true, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_1, m_pending_bit.extended_addr[0], sizeof(test_addr_extended_1));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_2, m_pending_bit.extended_addr[1], sizeof(test_addr_extended_2));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_3, m_pending_bit.extended_addr[2], sizeof(test_addr_extended_3));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_4, m_pending_bit.extended_addr[3], sizeof(test_addr_extended_4));
+
+    nrf_802154_ack_data_reset(true, NRF_802154_ACK_DATA_PENDING_BIT);
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+
+    nrf_802154_ack_data_for_addr_set(test_addr_extended_3, true, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+    nrf_802154_ack_data_for_addr_set(test_addr_extended_4, true, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+    nrf_802154_ack_data_for_addr_set(test_addr_extended_1, true, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+    nrf_802154_ack_data_for_addr_set(test_addr_extended_2, true, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_1, m_pending_bit.extended_addr[0], sizeof(test_addr_extended_1));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_2, m_pending_bit.extended_addr[1], sizeof(test_addr_extended_2));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_3, m_pending_bit.extended_addr[2], sizeof(test_addr_extended_3));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_4, m_pending_bit.extended_addr[3], sizeof(test_addr_extended_4));
+
+    nrf_802154_ack_data_reset(true, NRF_802154_ACK_DATA_PENDING_BIT);
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+
+    nrf_802154_ack_data_for_addr_set(test_addr_extended_3, true, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+    nrf_802154_ack_data_for_addr_set(test_addr_extended_4, true, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+    nrf_802154_ack_data_for_addr_set(test_addr_extended_2, true, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+    nrf_802154_ack_data_for_addr_set(test_addr_extended_1, true, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_1, m_pending_bit.extended_addr[0], sizeof(test_addr_extended_1));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_2, m_pending_bit.extended_addr[1], sizeof(test_addr_extended_2));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_3, m_pending_bit.extended_addr[2], sizeof(test_addr_extended_3));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_4, m_pending_bit.extended_addr[3], sizeof(test_addr_extended_4));
+
+    nrf_802154_ack_data_reset(true, NRF_802154_ACK_DATA_PENDING_BIT);
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+
+    nrf_802154_ack_data_for_addr_set(test_addr_extended_4, true, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+    nrf_802154_ack_data_for_addr_set(test_addr_extended_1, true, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+    nrf_802154_ack_data_for_addr_set(test_addr_extended_2, true, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+    nrf_802154_ack_data_for_addr_set(test_addr_extended_3, true, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_1, m_pending_bit.extended_addr[0], sizeof(test_addr_extended_1));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_2, m_pending_bit.extended_addr[1], sizeof(test_addr_extended_2));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_3, m_pending_bit.extended_addr[2], sizeof(test_addr_extended_3));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_4, m_pending_bit.extended_addr[3], sizeof(test_addr_extended_4));
+
+    nrf_802154_ack_data_reset(true, NRF_802154_ACK_DATA_PENDING_BIT);
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+
+    nrf_802154_ack_data_for_addr_set(test_addr_extended_4, true, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+    nrf_802154_ack_data_for_addr_set(test_addr_extended_1, true, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+    nrf_802154_ack_data_for_addr_set(test_addr_extended_3, true, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+    nrf_802154_ack_data_for_addr_set(test_addr_extended_2, true, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_1, m_pending_bit.extended_addr[0], sizeof(test_addr_extended_1));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_2, m_pending_bit.extended_addr[1], sizeof(test_addr_extended_2));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_3, m_pending_bit.extended_addr[2], sizeof(test_addr_extended_3));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_4, m_pending_bit.extended_addr[3], sizeof(test_addr_extended_4));
+
+    nrf_802154_ack_data_reset(true, NRF_802154_ACK_DATA_PENDING_BIT);
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+
+    nrf_802154_ack_data_for_addr_set(test_addr_extended_4, true, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+    nrf_802154_ack_data_for_addr_set(test_addr_extended_2, true, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+    nrf_802154_ack_data_for_addr_set(test_addr_extended_1, true, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+    nrf_802154_ack_data_for_addr_set(test_addr_extended_3, true, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_1, m_pending_bit.extended_addr[0], sizeof(test_addr_extended_1));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_2, m_pending_bit.extended_addr[1], sizeof(test_addr_extended_2));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_3, m_pending_bit.extended_addr[2], sizeof(test_addr_extended_3));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_4, m_pending_bit.extended_addr[3], sizeof(test_addr_extended_4));
+
+    nrf_802154_ack_data_reset(true, NRF_802154_ACK_DATA_PENDING_BIT);
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+
+    nrf_802154_ack_data_for_addr_set(test_addr_extended_4, true, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+    nrf_802154_ack_data_for_addr_set(test_addr_extended_2, true, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+    nrf_802154_ack_data_for_addr_set(test_addr_extended_3, true, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+    nrf_802154_ack_data_for_addr_set(test_addr_extended_1, true, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_1, m_pending_bit.extended_addr[0], sizeof(test_addr_extended_1));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_2, m_pending_bit.extended_addr[1], sizeof(test_addr_extended_2));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_3, m_pending_bit.extended_addr[2], sizeof(test_addr_extended_3));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_4, m_pending_bit.extended_addr[3], sizeof(test_addr_extended_4));
+
+    nrf_802154_ack_data_reset(true, NRF_802154_ACK_DATA_PENDING_BIT);
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+
+    nrf_802154_ack_data_for_addr_set(test_addr_extended_4, true, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+    nrf_802154_ack_data_for_addr_set(test_addr_extended_3, true, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+    nrf_802154_ack_data_for_addr_set(test_addr_extended_1, true, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+    nrf_802154_ack_data_for_addr_set(test_addr_extended_2, true, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_1, m_pending_bit.extended_addr[0], sizeof(test_addr_extended_1));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_2, m_pending_bit.extended_addr[1], sizeof(test_addr_extended_2));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_3, m_pending_bit.extended_addr[2], sizeof(test_addr_extended_3));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_4, m_pending_bit.extended_addr[3], sizeof(test_addr_extended_4));
+
+    nrf_802154_ack_data_reset(true, NRF_802154_ACK_DATA_PENDING_BIT);
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+
+    nrf_802154_ack_data_for_addr_set(test_addr_extended_4, true, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+    nrf_802154_ack_data_for_addr_set(test_addr_extended_3, true, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+    nrf_802154_ack_data_for_addr_set(test_addr_extended_2, true, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+    nrf_802154_ack_data_for_addr_set(test_addr_extended_1, true, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_1, m_pending_bit.extended_addr[0], sizeof(test_addr_extended_1));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_2, m_pending_bit.extended_addr[1], sizeof(test_addr_extended_2));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_3, m_pending_bit.extended_addr[2], sizeof(test_addr_extended_3));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_4, m_pending_bit.extended_addr[3], sizeof(test_addr_extended_4));
+
+    nrf_802154_ack_data_reset(true, NRF_802154_ACK_DATA_PENDING_BIT);
 }
 
 void test_ShouldKeepAscendingOrderAfterAddingShortAddressToTheList(void)
 {
-    nrf_802154_ack_pending_bit_init();
+    nrf_802154_ack_data_init();
 
     ///////////////////////////////////////////////////////////////////////////////////////////////
 
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_short_1, false);
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_short_2, false);
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_short_3, false);
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_short_4, false);
+    nrf_802154_ack_data_for_addr_set(test_addr_short_1, false, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+    nrf_802154_ack_data_for_addr_set(test_addr_short_2, false, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+    nrf_802154_ack_data_for_addr_set(test_addr_short_3, false, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+    nrf_802154_ack_data_for_addr_set(test_addr_short_4, false, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
 
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_1, m_pending_short[0], sizeof(test_addr_short_1));
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_2, m_pending_short[1], sizeof(test_addr_short_2));
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_3, m_pending_short[2], sizeof(test_addr_short_3));
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_4, m_pending_short[3], sizeof(test_addr_short_4));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_1, m_pending_bit.short_addr[0], sizeof(test_addr_short_1));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_2, m_pending_bit.short_addr[1], sizeof(test_addr_short_2));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_3, m_pending_bit.short_addr[2], sizeof(test_addr_short_3));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_4, m_pending_bit.short_addr[3], sizeof(test_addr_short_4));
 
-    nrf_802154_ack_pending_bit_for_addr_reset(false);
-
-    ///////////////////////////////////////////////////////////////////////////////////////////////
-
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_short_1, false);
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_short_2, false);
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_short_4, false);
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_short_3, false);
-
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_1, m_pending_short[0], sizeof(test_addr_short_1));
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_2, m_pending_short[1], sizeof(test_addr_short_2));
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_3, m_pending_short[2], sizeof(test_addr_short_3));
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_4, m_pending_short[3], sizeof(test_addr_short_4));
-
-    nrf_802154_ack_pending_bit_for_addr_reset(false);
+    nrf_802154_ack_data_reset(false, NRF_802154_ACK_DATA_PENDING_BIT);
 
     ///////////////////////////////////////////////////////////////////////////////////////////////
 
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_short_1, false);
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_short_3, false);
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_short_2, false);
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_short_4, false);
+    nrf_802154_ack_data_for_addr_set(test_addr_short_1, false, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+    nrf_802154_ack_data_for_addr_set(test_addr_short_2, false, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+    nrf_802154_ack_data_for_addr_set(test_addr_short_4, false, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+    nrf_802154_ack_data_for_addr_set(test_addr_short_3, false, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
 
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_1, m_pending_short[0], sizeof(test_addr_short_1));
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_2, m_pending_short[1], sizeof(test_addr_short_2));
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_3, m_pending_short[2], sizeof(test_addr_short_3));
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_4, m_pending_short[3], sizeof(test_addr_short_4));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_1, m_pending_bit.short_addr[0], sizeof(test_addr_short_1));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_2, m_pending_bit.short_addr[1], sizeof(test_addr_short_2));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_3, m_pending_bit.short_addr[2], sizeof(test_addr_short_3));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_4, m_pending_bit.short_addr[3], sizeof(test_addr_short_4));
 
-    nrf_802154_ack_pending_bit_for_addr_reset(false);
-
-    ///////////////////////////////////////////////////////////////////////////////////////////////
-
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_short_1, false);
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_short_3, false);
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_short_4, false);
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_short_2, false);
-
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_1, m_pending_short[0], sizeof(test_addr_short_1));
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_2, m_pending_short[1], sizeof(test_addr_short_2));
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_3, m_pending_short[2], sizeof(test_addr_short_3));
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_4, m_pending_short[3], sizeof(test_addr_short_4));
-
-    nrf_802154_ack_pending_bit_for_addr_reset(false);
+    nrf_802154_ack_data_reset(false, NRF_802154_ACK_DATA_PENDING_BIT);
 
     ///////////////////////////////////////////////////////////////////////////////////////////////
 
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_short_1, false);
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_short_4, false);
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_short_2, false);
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_short_3, false);
+    nrf_802154_ack_data_for_addr_set(test_addr_short_1, false, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+    nrf_802154_ack_data_for_addr_set(test_addr_short_3, false, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+    nrf_802154_ack_data_for_addr_set(test_addr_short_2, false, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+    nrf_802154_ack_data_for_addr_set(test_addr_short_4, false, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
 
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_1, m_pending_short[0], sizeof(test_addr_short_1));
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_2, m_pending_short[1], sizeof(test_addr_short_2));
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_3, m_pending_short[2], sizeof(test_addr_short_3));
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_4, m_pending_short[3], sizeof(test_addr_short_4));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_1, m_pending_bit.short_addr[0], sizeof(test_addr_short_1));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_2, m_pending_bit.short_addr[1], sizeof(test_addr_short_2));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_3, m_pending_bit.short_addr[2], sizeof(test_addr_short_3));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_4, m_pending_bit.short_addr[3], sizeof(test_addr_short_4));
 
-    nrf_802154_ack_pending_bit_for_addr_reset(false);
-
-    ///////////////////////////////////////////////////////////////////////////////////////////////
-
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_short_1, false);
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_short_4, false);
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_short_3, false);
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_short_2, false);
-
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_1, m_pending_short[0], sizeof(test_addr_short_1));
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_2, m_pending_short[1], sizeof(test_addr_short_2));
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_3, m_pending_short[2], sizeof(test_addr_short_3));
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_4, m_pending_short[3], sizeof(test_addr_short_4));
-
-    nrf_802154_ack_pending_bit_for_addr_reset(false);
+    nrf_802154_ack_data_reset(false, NRF_802154_ACK_DATA_PENDING_BIT);
 
     ///////////////////////////////////////////////////////////////////////////////////////////////
 
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_short_2, false);
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_short_1, false);
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_short_3, false);
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_short_4, false);
+    nrf_802154_ack_data_for_addr_set(test_addr_short_1, false, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+    nrf_802154_ack_data_for_addr_set(test_addr_short_3, false, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+    nrf_802154_ack_data_for_addr_set(test_addr_short_4, false, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+    nrf_802154_ack_data_for_addr_set(test_addr_short_2, false, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
 
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_1, m_pending_short[0], sizeof(test_addr_short_1));
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_2, m_pending_short[1], sizeof(test_addr_short_2));
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_3, m_pending_short[2], sizeof(test_addr_short_3));
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_4, m_pending_short[3], sizeof(test_addr_short_4));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_1, m_pending_bit.short_addr[0], sizeof(test_addr_short_1));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_2, m_pending_bit.short_addr[1], sizeof(test_addr_short_2));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_3, m_pending_bit.short_addr[2], sizeof(test_addr_short_3));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_4, m_pending_bit.short_addr[3], sizeof(test_addr_short_4));
 
-    nrf_802154_ack_pending_bit_for_addr_reset(false);
-
-    ///////////////////////////////////////////////////////////////////////////////////////////////
-
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_short_2, false);
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_short_1, false);
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_short_4, false);
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_short_3, false);
-
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_1, m_pending_short[0], sizeof(test_addr_short_1));
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_2, m_pending_short[1], sizeof(test_addr_short_2));
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_3, m_pending_short[2], sizeof(test_addr_short_3));
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_4, m_pending_short[3], sizeof(test_addr_short_4));
-
-    nrf_802154_ack_pending_bit_for_addr_reset(false);
+    nrf_802154_ack_data_reset(false, NRF_802154_ACK_DATA_PENDING_BIT);
 
     ///////////////////////////////////////////////////////////////////////////////////////////////
 
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_short_2, false);
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_short_3, false);
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_short_1, false);
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_short_4, false);
+    nrf_802154_ack_data_for_addr_set(test_addr_short_1, false, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+    nrf_802154_ack_data_for_addr_set(test_addr_short_4, false, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+    nrf_802154_ack_data_for_addr_set(test_addr_short_2, false, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+    nrf_802154_ack_data_for_addr_set(test_addr_short_3, false, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
 
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_1, m_pending_short[0], sizeof(test_addr_short_1));
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_2, m_pending_short[1], sizeof(test_addr_short_2));
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_3, m_pending_short[2], sizeof(test_addr_short_3));
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_4, m_pending_short[3], sizeof(test_addr_short_4));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_1, m_pending_bit.short_addr[0], sizeof(test_addr_short_1));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_2, m_pending_bit.short_addr[1], sizeof(test_addr_short_2));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_3, m_pending_bit.short_addr[2], sizeof(test_addr_short_3));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_4, m_pending_bit.short_addr[3], sizeof(test_addr_short_4));
 
-    nrf_802154_ack_pending_bit_for_addr_reset(false);
-
-    ///////////////////////////////////////////////////////////////////////////////////////////////
-
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_short_2, false);
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_short_3, false);
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_short_4, false);
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_short_1, false);
-
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_1, m_pending_short[0], sizeof(test_addr_short_1));
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_2, m_pending_short[1], sizeof(test_addr_short_2));
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_3, m_pending_short[2], sizeof(test_addr_short_3));
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_4, m_pending_short[3], sizeof(test_addr_short_4));
-
-    nrf_802154_ack_pending_bit_for_addr_reset(false);
+    nrf_802154_ack_data_reset(false, NRF_802154_ACK_DATA_PENDING_BIT);
 
     ///////////////////////////////////////////////////////////////////////////////////////////////
 
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_short_2, false);
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_short_4, false);
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_short_1, false);
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_short_3, false);
+    nrf_802154_ack_data_for_addr_set(test_addr_short_1, false, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+    nrf_802154_ack_data_for_addr_set(test_addr_short_4, false, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+    nrf_802154_ack_data_for_addr_set(test_addr_short_3, false, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+    nrf_802154_ack_data_for_addr_set(test_addr_short_2, false, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
 
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_1, m_pending_short[0], sizeof(test_addr_short_1));
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_2, m_pending_short[1], sizeof(test_addr_short_2));
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_3, m_pending_short[2], sizeof(test_addr_short_3));
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_4, m_pending_short[3], sizeof(test_addr_short_4));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_1, m_pending_bit.short_addr[0], sizeof(test_addr_short_1));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_2, m_pending_bit.short_addr[1], sizeof(test_addr_short_2));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_3, m_pending_bit.short_addr[2], sizeof(test_addr_short_3));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_4, m_pending_bit.short_addr[3], sizeof(test_addr_short_4));
 
-    nrf_802154_ack_pending_bit_for_addr_reset(false);
-
-    ///////////////////////////////////////////////////////////////////////////////////////////////
-
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_short_2, false);
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_short_4, false);
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_short_3, false);
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_short_1, false);
-
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_1, m_pending_short[0], sizeof(test_addr_short_1));
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_2, m_pending_short[1], sizeof(test_addr_short_2));
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_3, m_pending_short[2], sizeof(test_addr_short_3));
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_4, m_pending_short[3], sizeof(test_addr_short_4));
-
-    nrf_802154_ack_pending_bit_for_addr_reset(false);
+    nrf_802154_ack_data_reset(false, NRF_802154_ACK_DATA_PENDING_BIT);
 
     ///////////////////////////////////////////////////////////////////////////////////////////////
 
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_short_3, false);
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_short_1, false);
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_short_2, false);
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_short_4, false);
+    nrf_802154_ack_data_for_addr_set(test_addr_short_2, false, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+    nrf_802154_ack_data_for_addr_set(test_addr_short_1, false, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+    nrf_802154_ack_data_for_addr_set(test_addr_short_3, false, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+    nrf_802154_ack_data_for_addr_set(test_addr_short_4, false, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
 
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_1, m_pending_short[0], sizeof(test_addr_short_1));
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_2, m_pending_short[1], sizeof(test_addr_short_2));
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_3, m_pending_short[2], sizeof(test_addr_short_3));
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_4, m_pending_short[3], sizeof(test_addr_short_4));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_1, m_pending_bit.short_addr[0], sizeof(test_addr_short_1));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_2, m_pending_bit.short_addr[1], sizeof(test_addr_short_2));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_3, m_pending_bit.short_addr[2], sizeof(test_addr_short_3));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_4, m_pending_bit.short_addr[3], sizeof(test_addr_short_4));
 
-    nrf_802154_ack_pending_bit_for_addr_reset(false);
-
-    ///////////////////////////////////////////////////////////////////////////////////////////////
-
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_short_3, false);
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_short_1, false);
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_short_4, false);
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_short_2, false);
-
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_1, m_pending_short[0], sizeof(test_addr_short_1));
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_2, m_pending_short[1], sizeof(test_addr_short_2));
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_3, m_pending_short[2], sizeof(test_addr_short_3));
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_4, m_pending_short[3], sizeof(test_addr_short_4));
-
-    nrf_802154_ack_pending_bit_for_addr_reset(false);
+    nrf_802154_ack_data_reset(false, NRF_802154_ACK_DATA_PENDING_BIT);
 
     ///////////////////////////////////////////////////////////////////////////////////////////////
 
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_short_3, false);
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_short_2, false);
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_short_1, false);
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_short_4, false);
+    nrf_802154_ack_data_for_addr_set(test_addr_short_2, false, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+    nrf_802154_ack_data_for_addr_set(test_addr_short_1, false, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+    nrf_802154_ack_data_for_addr_set(test_addr_short_4, false, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+    nrf_802154_ack_data_for_addr_set(test_addr_short_3, false, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
 
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_1, m_pending_short[0], sizeof(test_addr_short_1));
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_2, m_pending_short[1], sizeof(test_addr_short_2));
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_3, m_pending_short[2], sizeof(test_addr_short_3));
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_4, m_pending_short[3], sizeof(test_addr_short_4));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_1, m_pending_bit.short_addr[0], sizeof(test_addr_short_1));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_2, m_pending_bit.short_addr[1], sizeof(test_addr_short_2));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_3, m_pending_bit.short_addr[2], sizeof(test_addr_short_3));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_4, m_pending_bit.short_addr[3], sizeof(test_addr_short_4));
 
-    nrf_802154_ack_pending_bit_for_addr_reset(false);
-
-    ///////////////////////////////////////////////////////////////////////////////////////////////
-
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_short_3, false);
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_short_2, false);
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_short_4, false);
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_short_1, false);
-
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_1, m_pending_short[0], sizeof(test_addr_short_1));
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_2, m_pending_short[1], sizeof(test_addr_short_2));
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_3, m_pending_short[2], sizeof(test_addr_short_3));
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_4, m_pending_short[3], sizeof(test_addr_short_4));
-
-    nrf_802154_ack_pending_bit_for_addr_reset(false);
+    nrf_802154_ack_data_reset(false, NRF_802154_ACK_DATA_PENDING_BIT);
 
     ///////////////////////////////////////////////////////////////////////////////////////////////
 
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_short_3, false);
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_short_4, false);
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_short_1, false);
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_short_2, false);
+    nrf_802154_ack_data_for_addr_set(test_addr_short_2, false, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+    nrf_802154_ack_data_for_addr_set(test_addr_short_3, false, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+    nrf_802154_ack_data_for_addr_set(test_addr_short_1, false, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+    nrf_802154_ack_data_for_addr_set(test_addr_short_4, false, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
 
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_1, m_pending_short[0], sizeof(test_addr_short_1));
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_2, m_pending_short[1], sizeof(test_addr_short_2));
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_3, m_pending_short[2], sizeof(test_addr_short_3));
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_4, m_pending_short[3], sizeof(test_addr_short_4));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_1, m_pending_bit.short_addr[0], sizeof(test_addr_short_1));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_2, m_pending_bit.short_addr[1], sizeof(test_addr_short_2));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_3, m_pending_bit.short_addr[2], sizeof(test_addr_short_3));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_4, m_pending_bit.short_addr[3], sizeof(test_addr_short_4));
 
-    nrf_802154_ack_pending_bit_for_addr_reset(false);
-
-    ///////////////////////////////////////////////////////////////////////////////////////////////
-
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_short_3, false);
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_short_4, false);
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_short_2, false);
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_short_1, false);
-
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_1, m_pending_short[0], sizeof(test_addr_short_1));
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_2, m_pending_short[1], sizeof(test_addr_short_2));
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_3, m_pending_short[2], sizeof(test_addr_short_3));
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_4, m_pending_short[3], sizeof(test_addr_short_4));
-
-    nrf_802154_ack_pending_bit_for_addr_reset(false);
+    nrf_802154_ack_data_reset(false, NRF_802154_ACK_DATA_PENDING_BIT);
 
     ///////////////////////////////////////////////////////////////////////////////////////////////
 
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_short_4, false);
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_short_1, false);
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_short_2, false);
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_short_3, false);
+    nrf_802154_ack_data_for_addr_set(test_addr_short_2, false, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+    nrf_802154_ack_data_for_addr_set(test_addr_short_3, false, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+    nrf_802154_ack_data_for_addr_set(test_addr_short_4, false, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+    nrf_802154_ack_data_for_addr_set(test_addr_short_1, false, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
 
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_1, m_pending_short[0], sizeof(test_addr_short_1));
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_2, m_pending_short[1], sizeof(test_addr_short_2));
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_3, m_pending_short[2], sizeof(test_addr_short_3));
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_4, m_pending_short[3], sizeof(test_addr_short_4));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_1, m_pending_bit.short_addr[0], sizeof(test_addr_short_1));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_2, m_pending_bit.short_addr[1], sizeof(test_addr_short_2));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_3, m_pending_bit.short_addr[2], sizeof(test_addr_short_3));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_4, m_pending_bit.short_addr[3], sizeof(test_addr_short_4));
 
-    nrf_802154_ack_pending_bit_for_addr_reset(false);
-
-    ///////////////////////////////////////////////////////////////////////////////////////////////
-
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_short_4, false);
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_short_1, false);
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_short_3, false);
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_short_2, false);
-
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_1, m_pending_short[0], sizeof(test_addr_short_1));
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_2, m_pending_short[1], sizeof(test_addr_short_2));
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_3, m_pending_short[2], sizeof(test_addr_short_3));
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_4, m_pending_short[3], sizeof(test_addr_short_4));
-
-    nrf_802154_ack_pending_bit_for_addr_reset(false);
+    nrf_802154_ack_data_reset(false, NRF_802154_ACK_DATA_PENDING_BIT);
 
     ///////////////////////////////////////////////////////////////////////////////////////////////
 
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_short_4, false);
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_short_2, false);
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_short_1, false);
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_short_3, false);
+    nrf_802154_ack_data_for_addr_set(test_addr_short_2, false, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+    nrf_802154_ack_data_for_addr_set(test_addr_short_4, false, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+    nrf_802154_ack_data_for_addr_set(test_addr_short_1, false, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+    nrf_802154_ack_data_for_addr_set(test_addr_short_3, false, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
 
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_1, m_pending_short[0], sizeof(test_addr_short_1));
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_2, m_pending_short[1], sizeof(test_addr_short_2));
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_3, m_pending_short[2], sizeof(test_addr_short_3));
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_4, m_pending_short[3], sizeof(test_addr_short_4));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_1, m_pending_bit.short_addr[0], sizeof(test_addr_short_1));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_2, m_pending_bit.short_addr[1], sizeof(test_addr_short_2));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_3, m_pending_bit.short_addr[2], sizeof(test_addr_short_3));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_4, m_pending_bit.short_addr[3], sizeof(test_addr_short_4));
 
-    nrf_802154_ack_pending_bit_for_addr_reset(false);
-
-    ///////////////////////////////////////////////////////////////////////////////////////////////
-
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_short_4, false);
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_short_2, false);
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_short_3, false);
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_short_1, false);
-
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_1, m_pending_short[0], sizeof(test_addr_short_1));
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_2, m_pending_short[1], sizeof(test_addr_short_2));
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_3, m_pending_short[2], sizeof(test_addr_short_3));
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_4, m_pending_short[3], sizeof(test_addr_short_4));
-
-    nrf_802154_ack_pending_bit_for_addr_reset(false);
+    nrf_802154_ack_data_reset(false, NRF_802154_ACK_DATA_PENDING_BIT);
 
     ///////////////////////////////////////////////////////////////////////////////////////////////
 
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_short_4, false);
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_short_3, false);
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_short_1, false);
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_short_2, false);
+    nrf_802154_ack_data_for_addr_set(test_addr_short_2, false, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+    nrf_802154_ack_data_for_addr_set(test_addr_short_4, false, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+    nrf_802154_ack_data_for_addr_set(test_addr_short_3, false, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+    nrf_802154_ack_data_for_addr_set(test_addr_short_1, false, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
 
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_1, m_pending_short[0], sizeof(test_addr_short_1));
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_2, m_pending_short[1], sizeof(test_addr_short_2));
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_3, m_pending_short[2], sizeof(test_addr_short_3));
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_4, m_pending_short[3], sizeof(test_addr_short_4));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_1, m_pending_bit.short_addr[0], sizeof(test_addr_short_1));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_2, m_pending_bit.short_addr[1], sizeof(test_addr_short_2));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_3, m_pending_bit.short_addr[2], sizeof(test_addr_short_3));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_4, m_pending_bit.short_addr[3], sizeof(test_addr_short_4));
 
-    nrf_802154_ack_pending_bit_for_addr_reset(false);
+    nrf_802154_ack_data_reset(false, NRF_802154_ACK_DATA_PENDING_BIT);
 
     ///////////////////////////////////////////////////////////////////////////////////////////////
 
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_short_4, false);
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_short_3, false);
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_short_2, false);
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_short_1, false);
+    nrf_802154_ack_data_for_addr_set(test_addr_short_3, false, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+    nrf_802154_ack_data_for_addr_set(test_addr_short_1, false, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+    nrf_802154_ack_data_for_addr_set(test_addr_short_2, false, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+    nrf_802154_ack_data_for_addr_set(test_addr_short_4, false, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
 
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_1, m_pending_short[0], sizeof(test_addr_short_1));
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_2, m_pending_short[1], sizeof(test_addr_short_2));
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_3, m_pending_short[2], sizeof(test_addr_short_3));
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_4, m_pending_short[3], sizeof(test_addr_short_4));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_1, m_pending_bit.short_addr[0], sizeof(test_addr_short_1));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_2, m_pending_bit.short_addr[1], sizeof(test_addr_short_2));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_3, m_pending_bit.short_addr[2], sizeof(test_addr_short_3));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_4, m_pending_bit.short_addr[3], sizeof(test_addr_short_4));
 
-    nrf_802154_ack_pending_bit_for_addr_reset(false);
+    nrf_802154_ack_data_reset(false, NRF_802154_ACK_DATA_PENDING_BIT);
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+
+    nrf_802154_ack_data_for_addr_set(test_addr_short_3, false, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+    nrf_802154_ack_data_for_addr_set(test_addr_short_1, false, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+    nrf_802154_ack_data_for_addr_set(test_addr_short_4, false, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+    nrf_802154_ack_data_for_addr_set(test_addr_short_2, false, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_1, m_pending_bit.short_addr[0], sizeof(test_addr_short_1));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_2, m_pending_bit.short_addr[1], sizeof(test_addr_short_2));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_3, m_pending_bit.short_addr[2], sizeof(test_addr_short_3));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_4, m_pending_bit.short_addr[3], sizeof(test_addr_short_4));
+
+    nrf_802154_ack_data_reset(false, NRF_802154_ACK_DATA_PENDING_BIT);
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+
+    nrf_802154_ack_data_for_addr_set(test_addr_short_3, false, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+    nrf_802154_ack_data_for_addr_set(test_addr_short_2, false, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+    nrf_802154_ack_data_for_addr_set(test_addr_short_1, false, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+    nrf_802154_ack_data_for_addr_set(test_addr_short_4, false, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_1, m_pending_bit.short_addr[0], sizeof(test_addr_short_1));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_2, m_pending_bit.short_addr[1], sizeof(test_addr_short_2));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_3, m_pending_bit.short_addr[2], sizeof(test_addr_short_3));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_4, m_pending_bit.short_addr[3], sizeof(test_addr_short_4));
+
+    nrf_802154_ack_data_reset(false, NRF_802154_ACK_DATA_PENDING_BIT);
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+
+    nrf_802154_ack_data_for_addr_set(test_addr_short_3, false, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+    nrf_802154_ack_data_for_addr_set(test_addr_short_2, false, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+    nrf_802154_ack_data_for_addr_set(test_addr_short_4, false, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+    nrf_802154_ack_data_for_addr_set(test_addr_short_1, false, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_1, m_pending_bit.short_addr[0], sizeof(test_addr_short_1));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_2, m_pending_bit.short_addr[1], sizeof(test_addr_short_2));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_3, m_pending_bit.short_addr[2], sizeof(test_addr_short_3));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_4, m_pending_bit.short_addr[3], sizeof(test_addr_short_4));
+
+    nrf_802154_ack_data_reset(false, NRF_802154_ACK_DATA_PENDING_BIT);
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+
+    nrf_802154_ack_data_for_addr_set(test_addr_short_3, false, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+    nrf_802154_ack_data_for_addr_set(test_addr_short_4, false, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+    nrf_802154_ack_data_for_addr_set(test_addr_short_1, false, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+    nrf_802154_ack_data_for_addr_set(test_addr_short_2, false, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_1, m_pending_bit.short_addr[0], sizeof(test_addr_short_1));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_2, m_pending_bit.short_addr[1], sizeof(test_addr_short_2));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_3, m_pending_bit.short_addr[2], sizeof(test_addr_short_3));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_4, m_pending_bit.short_addr[3], sizeof(test_addr_short_4));
+
+    nrf_802154_ack_data_reset(false, NRF_802154_ACK_DATA_PENDING_BIT);
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+
+    nrf_802154_ack_data_for_addr_set(test_addr_short_3, false, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+    nrf_802154_ack_data_for_addr_set(test_addr_short_4, false, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+    nrf_802154_ack_data_for_addr_set(test_addr_short_2, false, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+    nrf_802154_ack_data_for_addr_set(test_addr_short_1, false, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_1, m_pending_bit.short_addr[0], sizeof(test_addr_short_1));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_2, m_pending_bit.short_addr[1], sizeof(test_addr_short_2));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_3, m_pending_bit.short_addr[2], sizeof(test_addr_short_3));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_4, m_pending_bit.short_addr[3], sizeof(test_addr_short_4));
+
+    nrf_802154_ack_data_reset(false, NRF_802154_ACK_DATA_PENDING_BIT);
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+
+    nrf_802154_ack_data_for_addr_set(test_addr_short_4, false, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+    nrf_802154_ack_data_for_addr_set(test_addr_short_1, false, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+    nrf_802154_ack_data_for_addr_set(test_addr_short_2, false, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+    nrf_802154_ack_data_for_addr_set(test_addr_short_3, false, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_1, m_pending_bit.short_addr[0], sizeof(test_addr_short_1));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_2, m_pending_bit.short_addr[1], sizeof(test_addr_short_2));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_3, m_pending_bit.short_addr[2], sizeof(test_addr_short_3));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_4, m_pending_bit.short_addr[3], sizeof(test_addr_short_4));
+
+    nrf_802154_ack_data_reset(false, NRF_802154_ACK_DATA_PENDING_BIT);
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+
+    nrf_802154_ack_data_for_addr_set(test_addr_short_4, false, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+    nrf_802154_ack_data_for_addr_set(test_addr_short_1, false, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+    nrf_802154_ack_data_for_addr_set(test_addr_short_3, false, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+    nrf_802154_ack_data_for_addr_set(test_addr_short_2, false, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_1, m_pending_bit.short_addr[0], sizeof(test_addr_short_1));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_2, m_pending_bit.short_addr[1], sizeof(test_addr_short_2));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_3, m_pending_bit.short_addr[2], sizeof(test_addr_short_3));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_4, m_pending_bit.short_addr[3], sizeof(test_addr_short_4));
+
+    nrf_802154_ack_data_reset(false, NRF_802154_ACK_DATA_PENDING_BIT);
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+
+    nrf_802154_ack_data_for_addr_set(test_addr_short_4, false, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+    nrf_802154_ack_data_for_addr_set(test_addr_short_2, false, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+    nrf_802154_ack_data_for_addr_set(test_addr_short_1, false, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+    nrf_802154_ack_data_for_addr_set(test_addr_short_3, false, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_1, m_pending_bit.short_addr[0], sizeof(test_addr_short_1));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_2, m_pending_bit.short_addr[1], sizeof(test_addr_short_2));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_3, m_pending_bit.short_addr[2], sizeof(test_addr_short_3));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_4, m_pending_bit.short_addr[3], sizeof(test_addr_short_4));
+
+    nrf_802154_ack_data_reset(false, NRF_802154_ACK_DATA_PENDING_BIT);
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+
+    nrf_802154_ack_data_for_addr_set(test_addr_short_4, false, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+    nrf_802154_ack_data_for_addr_set(test_addr_short_2, false, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+    nrf_802154_ack_data_for_addr_set(test_addr_short_3, false, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+    nrf_802154_ack_data_for_addr_set(test_addr_short_1, false, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_1, m_pending_bit.short_addr[0], sizeof(test_addr_short_1));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_2, m_pending_bit.short_addr[1], sizeof(test_addr_short_2));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_3, m_pending_bit.short_addr[2], sizeof(test_addr_short_3));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_4, m_pending_bit.short_addr[3], sizeof(test_addr_short_4));
+
+    nrf_802154_ack_data_reset(false, NRF_802154_ACK_DATA_PENDING_BIT);
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+
+    nrf_802154_ack_data_for_addr_set(test_addr_short_4, false, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+    nrf_802154_ack_data_for_addr_set(test_addr_short_3, false, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+    nrf_802154_ack_data_for_addr_set(test_addr_short_1, false, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+    nrf_802154_ack_data_for_addr_set(test_addr_short_2, false, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_1, m_pending_bit.short_addr[0], sizeof(test_addr_short_1));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_2, m_pending_bit.short_addr[1], sizeof(test_addr_short_2));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_3, m_pending_bit.short_addr[2], sizeof(test_addr_short_3));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_4, m_pending_bit.short_addr[3], sizeof(test_addr_short_4));
+
+    nrf_802154_ack_data_reset(false, NRF_802154_ACK_DATA_PENDING_BIT);
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+
+    nrf_802154_ack_data_for_addr_set(test_addr_short_4, false, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+    nrf_802154_ack_data_for_addr_set(test_addr_short_3, false, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+    nrf_802154_ack_data_for_addr_set(test_addr_short_2, false, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+    nrf_802154_ack_data_for_addr_set(test_addr_short_1, false, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_1, m_pending_bit.short_addr[0], sizeof(test_addr_short_1));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_2, m_pending_bit.short_addr[1], sizeof(test_addr_short_2));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_3, m_pending_bit.short_addr[2], sizeof(test_addr_short_3));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_4, m_pending_bit.short_addr[3], sizeof(test_addr_short_4));
+
+    nrf_802154_ack_data_reset(false, NRF_802154_ACK_DATA_PENDING_BIT);
 }
 
 void test_ShouldNotAddAddressWhenAddressAlreadyOnTheList(void)
 {
-    nrf_802154_ack_pending_bit_init();
+    nrf_802154_ack_data_init();
 
     bool result;
 
-    result = nrf_802154_ack_pending_bit_for_addr_set(test_addr_extended_1, true);
+    result = nrf_802154_ack_data_for_addr_set(test_addr_extended_1, true, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
     TEST_ASSERT_TRUE(result);
-    result = nrf_802154_ack_pending_bit_for_addr_set(test_addr_extended_1, true);
+    result = nrf_802154_ack_data_for_addr_set(test_addr_extended_1, true, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
     TEST_ASSERT_TRUE(result);
-    TEST_ASSERT_EQUAL_UINT8(1, m_num_of_pending_extended);
+    TEST_ASSERT_EQUAL_UINT8(1, m_pending_bit.num_of_ext_addr);
 
-    result = nrf_802154_ack_pending_bit_for_addr_set(test_addr_short_1, false);
+    result = nrf_802154_ack_data_for_addr_set(test_addr_short_1, false, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
     TEST_ASSERT_TRUE(result);
-    result = nrf_802154_ack_pending_bit_for_addr_set(test_addr_short_1, false);
+    result = nrf_802154_ack_data_for_addr_set(test_addr_short_1, false, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
     TEST_ASSERT_TRUE(result);
-    TEST_ASSERT_EQUAL_UINT8(1, m_num_of_pending_short);
+    TEST_ASSERT_EQUAL_UINT8(1, m_pending_bit.num_of_short_addr);
 }
 
 void test_ShouldRemoveAddressFromTheList(void)
 {
-    nrf_802154_ack_pending_bit_init();
+    nrf_802154_ack_data_init();
 
     bool result;
 
-    result = nrf_802154_ack_pending_bit_for_addr_set(test_addr_extended_1, true);
+    result = nrf_802154_ack_data_for_addr_set(test_addr_extended_1, true, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
     TEST_ASSERT_TRUE(result);
-    result = nrf_802154_ack_pending_bit_for_addr_set(test_addr_extended_2, true);
+    result = nrf_802154_ack_data_for_addr_set(test_addr_extended_2, true, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
     TEST_ASSERT_TRUE(result);
-    result = nrf_802154_ack_pending_bit_for_addr_clear(test_addr_extended_1, true);
+    result = nrf_802154_ack_data_for_addr_clear(test_addr_extended_1, true, NRF_802154_ACK_DATA_PENDING_BIT);
     TEST_ASSERT_TRUE(result);
 
-    result = nrf_802154_ack_pending_bit_for_addr_set(test_addr_short_1, false);
+    result = nrf_802154_ack_data_for_addr_set(test_addr_short_1, false, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
     TEST_ASSERT_TRUE(result);
-    result = nrf_802154_ack_pending_bit_for_addr_set(test_addr_short_2, false);
+    result = nrf_802154_ack_data_for_addr_set(test_addr_short_2, false, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
     TEST_ASSERT_TRUE(result);
-    result = nrf_802154_ack_pending_bit_for_addr_clear(test_addr_short_2, false);
+    result = nrf_802154_ack_data_for_addr_clear(test_addr_short_2, false, NRF_802154_ACK_DATA_PENDING_BIT);
     TEST_ASSERT_TRUE(result);
 }
 
 void test_ShouldFailToRemoveAddressFromTheListWhenListIsEmpty(void)
 {
-    nrf_802154_ack_pending_bit_init();
+    nrf_802154_ack_data_init();
 
     bool result;
 
-    result = nrf_802154_ack_pending_bit_for_addr_clear(test_addr_extended_1, true);
+    result = nrf_802154_ack_data_for_addr_clear(test_addr_extended_1, true, NRF_802154_ACK_DATA_PENDING_BIT);
     TEST_ASSERT_FALSE(result);
 
-    result = nrf_802154_ack_pending_bit_for_addr_clear(test_addr_short_1, false);
+    result = nrf_802154_ack_data_for_addr_clear(test_addr_short_1, false, NRF_802154_ACK_DATA_PENDING_BIT);
     TEST_ASSERT_FALSE(result);
 }
 
 void test_ShouldKeepAscendingOrderAfterRemovingAddressFromTheList(void)
 {
-    nrf_802154_ack_pending_bit_init();
+    nrf_802154_ack_data_init();
 
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_extended_1, true);
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_extended_3, true);
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_extended_4, true);
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_extended_2, true);
-    nrf_802154_ack_pending_bit_for_addr_clear(test_addr_extended_3, true);
+    nrf_802154_ack_data_for_addr_set(test_addr_extended_1, true, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+    nrf_802154_ack_data_for_addr_set(test_addr_extended_3, true, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+    nrf_802154_ack_data_for_addr_set(test_addr_extended_4, true, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+    nrf_802154_ack_data_for_addr_set(test_addr_extended_2, true, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+    nrf_802154_ack_data_for_addr_clear(test_addr_extended_3, true, NRF_802154_ACK_DATA_PENDING_BIT);
 
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_short_1, false);
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_short_3, false);
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_short_4, false);
-    nrf_802154_ack_pending_bit_for_addr_set(test_addr_short_2, false);
-    nrf_802154_ack_pending_bit_for_addr_clear(test_addr_short_3, false);
+    nrf_802154_ack_data_for_addr_set(test_addr_short_1, false, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+    nrf_802154_ack_data_for_addr_set(test_addr_short_3, false, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+    nrf_802154_ack_data_for_addr_set(test_addr_short_4, false, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+    nrf_802154_ack_data_for_addr_set(test_addr_short_2, false, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
+    nrf_802154_ack_data_for_addr_clear(test_addr_short_3, false, NRF_802154_ACK_DATA_PENDING_BIT);
 
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_1, m_pending_extended[0], sizeof(test_addr_extended_1));
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_2, m_pending_extended[1], sizeof(test_addr_extended_2));
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_4, m_pending_extended[2], sizeof(test_addr_extended_4));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_1, m_pending_bit.extended_addr[0], sizeof(test_addr_extended_1));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_2, m_pending_bit.extended_addr[1], sizeof(test_addr_extended_2));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_extended_4, m_pending_bit.extended_addr[2], sizeof(test_addr_extended_4));
 
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_1, m_pending_short[0], sizeof(test_addr_short_1));
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_2, m_pending_short[1], sizeof(test_addr_short_2));
-    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_4, m_pending_short[2], sizeof(test_addr_short_4));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_1, m_pending_bit.short_addr[0], sizeof(test_addr_short_1));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_2, m_pending_bit.short_addr[1], sizeof(test_addr_short_2));
+    TEST_ASSERT_EQUAL_MEMORY(test_addr_short_4, m_pending_bit.short_addr[2], sizeof(test_addr_short_4));
 }
 
 void test_ShouldNotRemoveAddressWhenAddressNotOnTheList(void)
 {
-    nrf_802154_ack_pending_bit_init();
+    nrf_802154_ack_data_init();
 
     bool result;
 
-    result = nrf_802154_ack_pending_bit_for_addr_set(test_addr_extended_1, true);
+    result = nrf_802154_ack_data_for_addr_set(test_addr_extended_1, true, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
     TEST_ASSERT_TRUE(result);
-    result = nrf_802154_ack_pending_bit_for_addr_set(test_addr_extended_2, true);
+    result = nrf_802154_ack_data_for_addr_set(test_addr_extended_2, true, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
     TEST_ASSERT_TRUE(result);
-    result = nrf_802154_ack_pending_bit_for_addr_clear(test_addr_extended_3, true);
+    result = nrf_802154_ack_data_for_addr_clear(test_addr_extended_3, true, NRF_802154_ACK_DATA_PENDING_BIT);
     TEST_ASSERT_FALSE(result);
 
-    result = nrf_802154_ack_pending_bit_for_addr_set(test_addr_short_1, false);
+    result = nrf_802154_ack_data_for_addr_set(test_addr_short_1, false, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
     TEST_ASSERT_TRUE(result);
-    result = nrf_802154_ack_pending_bit_for_addr_set(test_addr_short_2, false);
+    result = nrf_802154_ack_data_for_addr_set(test_addr_short_2, false, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
     TEST_ASSERT_TRUE(result);
-    result = nrf_802154_ack_pending_bit_for_addr_clear(test_addr_short_3, false);
+    result = nrf_802154_ack_data_for_addr_clear(test_addr_short_3, false, NRF_802154_ACK_DATA_PENDING_BIT);
     TEST_ASSERT_FALSE(result);
 }
 
 void test_ShouldSetAckPendingBit(void)
 {
-    nrf_802154_ack_pending_bit_init();
+    nrf_802154_ack_data_init();
 
     bool result;
+    bool src_addr_extended = true;
 
     ///////////////////////////////////////////////////////////////////////////////////////////////
 
-    result = nrf_802154_ack_pending_bit_should_be_set(test_psdu_extended);
+    nrf_802154_frame_parser_src_addr_get_ExpectAndReturn(test_psdu_extended, &src_addr_extended, test_addr_extended_1);
+    nrf_802154_frame_parser_src_addr_get_IgnoreArg_p_src_addr_extended();
+    nrf_802154_frame_parser_src_addr_get_ReturnThruPtr_p_src_addr_extended(&src_addr_extended);
+
+    result = nrf_802154_ack_data_pending_bit_should_be_set(test_psdu_extended);
     TEST_ASSERT_FALSE(result);
 
-    result = nrf_802154_ack_pending_bit_for_addr_set(test_addr_extended_1, true);
+
+    result = nrf_802154_ack_data_for_addr_set(test_addr_extended_1, true, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
     TEST_ASSERT_TRUE(result);
 
-    result = nrf_802154_ack_pending_bit_should_be_set(test_psdu_extended);
+
+    nrf_802154_frame_parser_src_addr_get_ExpectAndReturn(test_psdu_extended, &src_addr_extended, test_addr_extended_1);
+    nrf_802154_frame_parser_src_addr_get_IgnoreArg_p_src_addr_extended();
+    nrf_802154_frame_parser_src_addr_get_ReturnThruPtr_p_src_addr_extended(&src_addr_extended);
+
+    result = nrf_802154_ack_data_pending_bit_should_be_set(test_psdu_extended);
     TEST_ASSERT_TRUE(result);
 
     ///////////////////////////////////////////////////////////////////////////////////////////////
 
-    result = nrf_802154_ack_pending_bit_should_be_set(test_psdu_short);
+    src_addr_extended = false;
+
+    nrf_802154_frame_parser_src_addr_get_ExpectAndReturn(test_psdu_short, &src_addr_extended, test_addr_short_1);
+    nrf_802154_frame_parser_src_addr_get_IgnoreArg_p_src_addr_extended();
+    nrf_802154_frame_parser_src_addr_get_ReturnThruPtr_p_src_addr_extended(&src_addr_extended);
+
+    result = nrf_802154_ack_data_pending_bit_should_be_set(test_psdu_short);
     TEST_ASSERT_FALSE(result);
 
-    result = nrf_802154_ack_pending_bit_for_addr_set(test_addr_short_1, false);
+
+    result = nrf_802154_ack_data_for_addr_set(test_addr_short_1, false, NRF_802154_ACK_DATA_PENDING_BIT, NULL, 0);
     TEST_ASSERT_TRUE(result);
 
-    result = nrf_802154_ack_pending_bit_should_be_set(test_psdu_short);
+
+    nrf_802154_frame_parser_src_addr_get_ExpectAndReturn(test_psdu_short, &src_addr_extended, test_addr_short_1);
+    nrf_802154_frame_parser_src_addr_get_IgnoreArg_p_src_addr_extended();
+    nrf_802154_frame_parser_src_addr_get_ReturnThruPtr_p_src_addr_extended(&src_addr_extended);
+
+    result = nrf_802154_ack_data_pending_bit_should_be_set(test_psdu_short);
     TEST_ASSERT_TRUE(result);
 }

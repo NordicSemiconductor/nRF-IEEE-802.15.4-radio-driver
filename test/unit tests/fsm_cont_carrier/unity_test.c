@@ -35,7 +35,7 @@
 #include "nrf_802154_config.h"
 #include "nrf_802154_const.h"
 #include "mock_nrf_802154.h"
-#include "mock_nrf_802154_ack_pending_bit.h"
+#include "mock_nrf_802154_ack_data.h"
 #include "mock_nrf_802154_core_hooks.h"
 #include "mock_nrf_802154_critical_section.h"
 #include "mock_nrf_802154_debug.h"
@@ -102,9 +102,14 @@ static void verify_continuous_carrier_begin_periph_setup(void)
     uint32_t event_addr;
     uint32_t task_addr;
     uint32_t fork_addr;
+    int8_t   tx_power;
 
     m_rsch_timeslot_is_granted = true;
 
+    tx_power = rand();
+    nrf_802154_pib_tx_power_get_ExpectAndReturn(tx_power);
+    nrf_radio_txpower_set_Expect(tx_power);
+    
     nrf_fem_control_ppi_enable_Expect(NRF_FEM_CONTROL_PA_PIN, NRF_TIMER_CC_CHANNEL2);
     nrf_fem_control_timer_set_Expect(NRF_FEM_CONTROL_PA_PIN, NRF_TIMER_CC_CHANNEL2, NRF_TIMER_SHORT_COMPARE2_STOP_MASK);
     fork_addr = rand();
@@ -114,7 +119,7 @@ static void verify_continuous_carrier_begin_periph_setup(void)
     nrf_egu_event_clear_Expect(NRF_802154_SWI_EGU_INSTANCE, EGU_EVENT);
 
     task_addr = rand();
-    nrf_radio_task_address_get_ExpectAndReturn(NRF_RADIO_TASK_TXEN, (uint32_t *)task_addr);
+    nrf_radio_task_address_get_ExpectAndReturn(NRF_RADIO_TASK_TXEN, task_addr);
     event_addr = rand();
     nrf_egu_event_address_get_ExpectAndReturn(NRF_802154_SWI_EGU_INSTANCE, EGU_EVENT, (uint32_t *)event_addr);
     nrf_ppi_channel_endpoint_setup_Expect(PPI_EGU_RAMP_UP, event_addr, task_addr);
@@ -122,7 +127,7 @@ static void verify_continuous_carrier_begin_periph_setup(void)
     task_addr = rand();
     nrf_egu_task_address_get_ExpectAndReturn(NRF_802154_SWI_EGU_INSTANCE, EGU_TASK, (uint32_t *)task_addr);
     event_addr = rand();
-    nrf_radio_event_address_get_ExpectAndReturn(NRF_RADIO_EVENT_DISABLED, (uint32_t *)event_addr);
+    nrf_radio_event_address_get_ExpectAndReturn(NRF_RADIO_EVENT_DISABLED, event_addr);
     nrf_ppi_channel_endpoint_setup_Expect(PPI_DISABLED_EGU, event_addr, task_addr);
 
     nrf_ppi_channel_enable_Expect(PPI_EGU_RAMP_UP);
@@ -153,7 +158,7 @@ void test_continuous_carrier_begin_ShallNotTriggerDisableIfRadioIsRampingDown(vo
 {
     verify_continuous_carrier_begin_periph_setup();
 
-    nrf_radio_state_get_ExpectAndReturn(NRF_RADIO_STATE_RX_DISABLE);
+    nrf_radio_state_get_ExpectAndReturn(NRF_RADIO_STATE_RXDISABLE);
 
     continuous_carrier_init(true);
 }

@@ -33,7 +33,7 @@
 #include "nrf_802154_config.h"
 #include "nrf_802154_const.h"
 #include "mock_nrf_802154.h"
-#include "mock_nrf_802154_ack_pending_bit.h"
+#include "mock_nrf_802154_ack_data.h"
 #include "mock_nrf_802154_core_hooks.h"
 #include "mock_nrf_802154_debug.h"
 #include "mock_nrf_802154_notification.h"
