@@ -45,7 +45,6 @@
 #include "mock_nrf_802154_priority_drop.h"
 #include "mock_nrf_802154_procedures_duration.h"
 #include "mock_nrf_802154_request.h"
-#include "mock_nrf_802154_revision.h"
 #include "mock_nrf_802154_rsch.h"
 #include "mock_nrf_802154_rsch_crit_sect.h"
 #include "mock_nrf_802154_rssi.h"

@@ -1,4 +1,4 @@
-/* Copyright (c) 2017 - 2018, Nordic Semiconductor ASA
+/* Copyright (c) 2017 - 2019, Nordic Semiconductor ASA
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -28,53 +28,34 @@
  *
  */
 
-#include "unity.h"
+#ifndef NRF_FEM_CONFIG_H_
+#define NRF_FEM_CONFIG_H_
 
-#include "nrf_802154_config.h"
-#include "nrf_802154_const.h"
-#include "mock_nrf_802154.h"
-#include "mock_nrf_802154_ack_data.h"
-#include "mock_nrf_802154_core_hooks.h"
-#include "mock_nrf_802154_debug.h"
-#include "mock_nrf_802154_notification.h"
-#include "mock_nrf_802154_pib.h"
-#include "mock_nrf_802154_priority_drop.h"
-#include "mock_nrf_802154_procedures_duration.h"
-#include "mock_nrf_802154_rx_buffer.h"
-#include "mock_nrf_fem_protocol_api.h"
-#include "mock_nrf_raal_api.h"
-#include "mock_nrf_radio.h"
-#include "mock_nrf_timer.h"
-#include "mock_nrf_egu.h"
-#include "mock_nrf_ppi.h"
+#include <stdint.h>
+#include <stdbool.h>
 
-#define __ISB()
-#define __LDREXB(ptr)           0
-#define __STREXB(value, ptr)    0
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-void nrf_802154_rx_started(void){}
-void nrf_802154_tx_started(const uint8_t * p_frame){}
-void nrf_802154_rx_ack_started(void){}
-void nrf_802154_tx_ack_started(const uint8_t * p_data){}
-
-#include "nrf_802154_core.c"
-
-
-/***********************************************************************************/
-/***********************************************************************************/
-/***********************************************************************************/
-
-void setUp(void)
+/**
+ * @brief Configuration parameters for pins that enable or disable (or both) either Power Amplifier (PA) or Low Noise Amplifier (LNA).
+ */
+typedef struct
 {
 
-}
+} nrf_fem_gpiote_pin_config_t;
 
-void tearDown(void)
+/**
+ * @brief Configuration parameters for the PA/LNA interface.
+ */
+typedef struct
 {
 
-}
+} nrf_fem_interface_config_t;
 
-void test_ShouldPass(void)
-{
-    TEST_ASSERT_EQUAL_UINT32(0, 0);
+#ifdef __cplusplus
 }
+#endif
+
+#endif /* NRF_FEM_CONFIG_H_ */

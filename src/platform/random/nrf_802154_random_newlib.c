@@ -1,4 +1,4 @@
-/* Copyright (c) 2017 - 2018, Nordic Semiconductor ASA
+/* Copyright (c) 2019, Nordic Semiconductor ASA
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -28,53 +28,55 @@
  *
  */
 
-#include "unity.h"
+/**
+ * @file
+ *   This file implements the pseudo-random number generator abstraction layer.
+ *
+ * This pseudo-random number abstraction layer uses newlib's rand_r() function.
+ *
+ */
 
-#include "nrf_802154_config.h"
-#include "nrf_802154_const.h"
-#include "mock_nrf_802154.h"
-#include "mock_nrf_802154_ack_data.h"
-#include "mock_nrf_802154_core_hooks.h"
-#include "mock_nrf_802154_debug.h"
-#include "mock_nrf_802154_notification.h"
-#include "mock_nrf_802154_pib.h"
-#include "mock_nrf_802154_priority_drop.h"
-#include "mock_nrf_802154_procedures_duration.h"
-#include "mock_nrf_802154_rx_buffer.h"
-#include "mock_nrf_fem_protocol_api.h"
-#include "mock_nrf_raal_api.h"
-#include "mock_nrf_radio.h"
-#include "mock_nrf_timer.h"
-#include "mock_nrf_egu.h"
-#include "mock_nrf_ppi.h"
+#define _POSIX_C_SOURCE 1 // Enable access to POSIX functions (rand_r is not from the std library)
 
-#define __ISB()
-#define __LDREXB(ptr)           0
-#define __STREXB(value, ptr)    0
+#include "nrf_802154_random.h"
 
-void nrf_802154_rx_started(void){}
-void nrf_802154_tx_started(const uint8_t * p_frame){}
-void nrf_802154_rx_ack_started(void){}
-void nrf_802154_tx_ack_started(const uint8_t * p_data){}
+#include <stdlib.h>
+#include <stdint.h>
 
-#include "nrf_802154_core.c"
+#include "nrf.h"
 
+#if RAAL_SOFTDEVICE
+#include <nrf_soc.h>
+#endif // RAAL_SOFTDEVICE
 
-/***********************************************************************************/
-/***********************************************************************************/
-/***********************************************************************************/
+unsigned int m_seed;
 
-void setUp(void)
+void nrf_802154_random_init(void)
 {
+#if RAAL_SOFTDEVICE
+    uint32_t result;
 
+    do
+    {
+        result = sd_rand_application_vector_get((uint8_t *)&m_seed, sizeof(m_seed));
+    }
+    while (result != NRF_SUCCESS);
+#else // RAAL_SOFTDEVICE
+    NRF_RNG->TASKS_START = 1;
+
+    while (!NRF_RNG->EVENTS_VALRDY);
+    NRF_RNG->EVENTS_VALRDY = 0;
+
+    m_seed = NRF_RNG->VALUE;
+#endif // RAAL_SOFTDEVICE
 }
 
-void tearDown(void)
+void nrf_802154_random_deinit(void)
 {
-
+    // Intentionally empty
 }
 
-void test_ShouldPass(void)
+uint32_t nrf_802154_random_get(void)
 {
-    TEST_ASSERT_EQUAL_UINT32(0, 0);
+    return (uint32_t)rand_r(&m_seed);
 }

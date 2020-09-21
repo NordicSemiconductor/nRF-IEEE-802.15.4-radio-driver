@@ -3,6 +3,7 @@
 *.orig
 .deps/
 .dirstamp
+.vscode/
 build/
 cmock/
 gcc/
