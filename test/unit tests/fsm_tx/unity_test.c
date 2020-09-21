@@ -330,10 +330,13 @@ void nrf_802154_tx_ack_started(const uint8_t * p_data){}
 static void verify_timeslot_request(bool cca, bool result)
 {
     uint16_t duration = rand();
+    bool     ack_req  = m_tx_buffer[ACK_REQUEST_OFFSET] & ACK_REQUEST_BIT;
+
+    nrf_802154_frame_parser_ar_bit_is_set_ExpectAndReturn(m_tx_buffer, ack_req);
 
     nrf_802154_tx_duration_get_ExpectAndReturn(m_tx_buffer[0],
                                                         cca,
-                                                        m_tx_buffer[1] & 0x20,
+                                                        ack_req,
                                                         duration);
     nrf_802154_rsch_timeslot_request_ExpectAndReturn(duration, result);
 }
@@ -345,7 +348,7 @@ void test_transmit_begin_ShallDoNothingIfTimeslotIsNotGranted(void)
 {
     verify_timeslot_request(false, false);
 
-    tx_init(m_rx_buffer.data, false, false);
+    tx_init(m_tx_buffer, false, false);
 }
 
 // Basic peripheral setup if CCA is not performed
@@ -700,6 +703,7 @@ void test_transmit_begin_ShallTriggerDisableIfRadioIsDisabledAndEguDidNotWork(vo
 
 static void verify_tx_terminate_periph_reset(bool in_timeslot)
 {
+
     nrf_ppi_channel_disable_Expect(PPI_DISABLED_EGU);
     nrf_ppi_channel_disable_Expect(PPI_EGU_RAMP_UP);
 
@@ -797,6 +801,10 @@ static void verify_phyend_ack_req_periph_setup(uint32_t shorts, bool buffer_free
     uint32_t task_addr1;
     uint32_t task_addr2;
 
+    bool ack_req = m_tx_buffer[ACK_REQUEST_OFFSET] & ACK_REQUEST_BIT;
+
+    nrf_802154_frame_parser_ar_bit_is_set_ExpectAndReturn(m_tx_buffer, ack_req);
+
     nrf_ppi_channel_disable_Expect(PPI_DISABLED_EGU);
 
     nrf_radio_shorts_set_Expect(shorts);
@@ -860,8 +868,12 @@ void test_phyend_handler_ShallDoNothingIfTransmissionHasNotStarted(void)
 
 void test_phyend_handler_ShallResetToRxStateAndNotifySuccessIfAckNotRequested(void)
 {
+    bool ack_req = m_tx_buffer[ACK_REQUEST_OFFSET] & ACK_REQUEST_BIT;
+
     m_flags.tx_started = true;
     insert_frame_with_noack_to_tx_buffer();
+
+    nrf_802154_frame_parser_ar_bit_is_set_ExpectAndReturn(m_tx_buffer, ack_req);
 
     verify_tx_terminate_periph_reset(true);
     verify_complete_receive_begin(false);

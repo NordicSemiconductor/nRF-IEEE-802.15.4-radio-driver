@@ -412,6 +412,14 @@
         ]
     },
 
+    "debug_assert_bkpt": {
+        "_class": "nRF_drv_radio_802_15_4",
+        "_description": "This option enables BKPT instruction when handling assert",
+        "_defines": [
+            "ENABLE_DEBUG_ASSERT_BKPT"
+        ]
+    },
+
     "debug_gpio": {
         "_class": "nRF_drv_radio_802_15_4",
         "_description": "This option connects RADIO events with GPIO output.",

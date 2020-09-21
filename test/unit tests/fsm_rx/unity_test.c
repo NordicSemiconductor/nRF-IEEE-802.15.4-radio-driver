@@ -40,6 +40,7 @@
 #include "mock_nrf_802154_core_hooks.h"
 #include "mock_nrf_802154_critical_section.h"
 #include "mock_nrf_802154_debug.h"
+#include "mock_nrf_802154_frame_parser.h"
 #include "mock_nrf_802154_notification.h"
 #include "mock_nrf_802154_pib.h"
 #include "mock_nrf_802154_priority_drop.h"
@@ -504,6 +505,8 @@ static void crcok_ack_periph_set_verify(void)
     uint32_t  event_addr;
     uint32_t  task_addr;
 
+    nrf_802154_frame_parser_ar_bit_is_set_ExpectAndReturn(m_buffer.data, true);
+
     nrf_802154_pib_auto_ack_get_ExpectAndReturn(true);
 
     nrf_802154_ack_generator_create_ExpectAndReturn(m_buffer.data, p_ack);
@@ -536,6 +539,8 @@ void test_crcok_handler_ShallPreparePeriphsToTransmitAckIfRequested(void)
     uint32_t  timer_cc3;
 
     insert_frame_with_ack_request_to_buffer();
+
+    nrf_802154_frame_parser_ar_bit_is_set_ExpectAndReturn(m_buffer.data, true);
 
     nrf_802154_pib_auto_ack_get_ExpectAndReturn(true);
 
@@ -732,6 +737,8 @@ void test_crcok_handler_ShallNotifyReceivedFrameAndStartRxIfTransmitterDidNotRam
 static void crcok_noack_periph_reset_verify(void)
 {
     uint32_t event_addr;
+
+    nrf_802154_frame_parser_ar_bit_is_set_ExpectAndReturn(m_buffer.data, false);
 
     nrf_ppi_channel_disable_Expect(PPI_DISABLED_EGU);
 

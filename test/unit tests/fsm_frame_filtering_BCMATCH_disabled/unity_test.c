@@ -44,6 +44,7 @@
 #include "mock_nrf_802154_critical_section.h"
 #include "mock_nrf_802154_debug.h"
 #include "mock_nrf_802154_filter.h"
+#include "mock_nrf_802154_frame_parser.h"
 #include "mock_nrf_802154_notification.h"
 #include "mock_nrf_802154_pib.h"
 #include "mock_nrf_802154_priority_drop.h"
@@ -501,6 +502,9 @@ void test_OnCrcOkEventStateRx_ShallSetFrameFilteredFlagToFalseAfterSuccesfullFra
     nrf_802154_filter_frame_part_IgnoreArg_p_num_bytes();
     nrf_802154_filter_frame_part_ReturnThruPtr_p_num_bytes(&expected_updated_size);
 
+    nrf_802154_frame_parser_ar_bit_is_set_ExpectAndReturn(m_test_radio_buffer.data, false);
+    nrf_802154_frame_parser_ar_bit_is_set_ExpectAndReturn(m_test_radio_buffer.data, false);
+
     mock_ack_not_requested(true);
 
     mock_received_frame_notify();
@@ -574,6 +578,9 @@ void test_OnCrcOkEventStateRx_ShallNotifyReceivedFrameIfFrameFilteringSucceedsAn
     nrf_802154_filter_frame_part_IgnoreArg_p_num_bytes();
     nrf_802154_filter_frame_part_ReturnThruPtr_p_num_bytes(&expected_updated_size);
 
+    nrf_802154_frame_parser_ar_bit_is_set_ExpectAndReturn(m_test_radio_buffer.data, false);
+    nrf_802154_frame_parser_ar_bit_is_set_ExpectAndReturn(m_test_radio_buffer.data, false);
+
     mock_ack_not_requested(true);
 
     mock_received_frame_notify();
@@ -626,9 +633,11 @@ void test_OnCrcOkEventStateRx_ShallPrepareAckAndSetStateToTxAckIfFrameFilteringS
     nrf_802154_filter_frame_part_IgnoreArg_p_num_bytes();
     nrf_802154_filter_frame_part_ReturnThruPtr_p_num_bytes(&expected_updated_size);
 
+    nrf_802154_frame_parser_ar_bit_is_set_ExpectAndReturn(m_test_radio_buffer.data, true);
     nrf_802154_rx_duration_get_ExpectAndReturn(0, true, duration);
     nrf_802154_rsch_timeslot_request_ExpectAndReturn(duration, true);
 
+    nrf_802154_frame_parser_ar_bit_is_set_ExpectAndReturn(m_test_radio_buffer.data, true);
     nrf_802154_pib_auto_ack_get_ExpectAndReturn(true);
 
     mock_ack_requested();
@@ -652,6 +661,7 @@ void test_OnCrcOkEventStateRx_ShallTerminateRxAndNotifyRxFrameIfAckRequestedAndT
     nrf_802154_filter_frame_part_IgnoreArg_p_num_bytes();
     nrf_802154_filter_frame_part_ReturnThruPtr_p_num_bytes(&expected_updated_size);
 
+    nrf_802154_frame_parser_ar_bit_is_set_ExpectAndReturn(m_test_radio_buffer.data, true);
     nrf_802154_rx_duration_get_ExpectAndReturn(0, true, duration);
     nrf_802154_rsch_timeslot_request_ExpectAndReturn(duration, false);
 
@@ -687,6 +697,9 @@ void test_OnCrcOkEventStateRx_ShallResetCounterTimerWhenAckIsNotRequested(void)
     nrf_802154_filter_frame_part_IgnoreArg_p_num_bytes();
     nrf_802154_filter_frame_part_ReturnThruPtr_p_num_bytes(&expected_updated_size);
 
+    nrf_802154_frame_parser_ar_bit_is_set_ExpectAndReturn(m_test_radio_buffer.data, false);
+    nrf_802154_frame_parser_ar_bit_is_set_ExpectAndReturn(m_test_radio_buffer.data, false);
+
     mock_ack_not_requested(true);
 
     mock_received_frame_notify();
@@ -705,9 +718,11 @@ void test_OnCrcOkEventStateRx_ShallNotResetCounterTimerWhenAckIsRequested(void)
     nrf_802154_filter_frame_part_IgnoreArg_p_num_bytes();
     nrf_802154_filter_frame_part_ReturnThruPtr_p_num_bytes(&expected_updated_size);
 
+    nrf_802154_frame_parser_ar_bit_is_set_ExpectAndReturn(m_test_radio_buffer.data, true);
     nrf_802154_rx_duration_get_ExpectAndReturn(0, true, duration);
     nrf_802154_rsch_timeslot_request_ExpectAndReturn(duration, true);
 
+    nrf_802154_frame_parser_ar_bit_is_set_ExpectAndReturn(m_test_radio_buffer.data, true);
     nrf_802154_pib_auto_ack_get_ExpectAndReturn(true);
 
     mock_ack_requested();

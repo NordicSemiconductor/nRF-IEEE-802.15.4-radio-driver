@@ -215,6 +215,8 @@
             {id: "CSMA_CA", val: 0x0008, from: "APP", to: "DRIVER", text: "nrf_802154_transmit_csma_ca()"},
             {id: "TRANSMIT_AT", val: 0x0009, from: "APP", to: "DRIVER", text: "nrf_802154_transmit_at()"},
             {id: "RECEIVE_AT", val: 0x000A, from: "APP", to: "DRIVER", text: "nrf_802154_receive_at()"},
+            {id: "TRANSMIT_AT_CANCEL", val: 0x000B, from: "APP", to: "DRIVER", text: "nrf_802154_transmit_at_cancel()"},
+            {id: "RECEIVE_AT_CANCEL", val: 0x000C, from: "APP", to: "DRIVER", text: "nrf_802154_receive_at_cancel()"},
 
             {id: "RADIO_IRQ", val: 0x0100, from: "RAAL", to: "DRIVER", text: "RADIO_IRQHandler()"},
             {id: "EVENT_FRAMESTART", val: 0x0101, from: "DRIVER", to: "DRIVER", text: "EVENT_FRAMESTART"},
@@ -263,6 +265,7 @@
             {id: "RSCH_DELAYED_TIMESLOT_REQ", val: 0x048B, from: "DRIVER", to: "RSCH", text: "nrf_802154_rsch_delayed_timeslot_request()"},
             {id: "RSCH_TIMER_DELAYED_PREC", val: 0x048C, from: "TSCH", to: "RSCH", text: "delayed_timeslot_prec_request()"},
             {id: "RSCH_TIMER_DELAYED_START", val: 0x048D, from: "TSCH", to: "RSCH", text: "delayed_timeslot_start()"},
+            {id: "RSCH_DELAYED_TIMESLOT_CANCEL", val: 0x048E, from: "DRIVER", to: "RSCH", text: "delayed_timeslot_cancel()"},
 
             {id: "CSMA_ABORT", val: 0x0500, from: "DRIVER", to: "CSMACA", text: "nrf_802154_csma_ca_abort()"},
             {id: "CSMA_TX_FAILED", val: 0x0501, from: "DRIVER", to: "CSMACA", text: "nrf_802154_csma_ca_tx_failed_hook()"},

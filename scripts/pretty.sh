@@ -64,7 +64,7 @@ do
         then
             $UNCRUSTIFY_BIN -c $UNCRUSTIFY_CFG -l $UNCRUSTIFY_LANG -q -f "$file" | diff -u "$file" - || pretty_check_fail=1
         else
-            $UNCRUSTIFY_BIN -c $UNCRUSTIFY_CFG -l $UNCRUSTIFY_LANG --no-backup "$file"
+            $UNCRUSTIFY_BIN -c $UNCRUSTIFY_CFG -l $UNCRUSTIFY_LANG --replace --no-backup "$file"
         fi
     fi
 done
