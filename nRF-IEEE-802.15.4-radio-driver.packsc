@@ -52,7 +52,7 @@
                     "src/nrf_802154_rssi.c",
                     "src/nrf_802154_rx_buffer.c",
                     "src/nrf_802154_timer_coord.c",
-                    "src/mac_features/nrf_802154_ack_timeout.c",
+                    "src/mac_features/nrf_802154_precise_ack_timeout.c",
                     "src/mac_features/nrf_802154_csma_ca.c",
                     "src/mac_features/nrf_802154_delayed_trx.c",
                     "src/mac_features/nrf_802154_filter.c",
@@ -89,7 +89,7 @@
                     "src/nrf_802154_rssi.c",
                     "src/nrf_802154_rx_buffer.c",
                     "src/nrf_802154_timer_coord.c",
-                    "src/mac_features/nrf_802154_ack_timeout.c",
+                    "src/mac_features/nrf_802154_precise_ack_timeout.c",
                     "src/mac_features/nrf_802154_csma_ca.c",
                     "src/mac_features/nrf_802154_delayed_trx.c",
                     "src/mac_features/nrf_802154_filter.c",
@@ -232,9 +232,6 @@
         "_headers": [
             "src/fem/nrf_fem_control_api.h"
         ],
-        "_links": [
-            "hal"
-        ],
         "_includes": [
             "src/fem"
         ],
@@ -246,6 +243,9 @@
                 "_attrs": [
                     "public"
                 ],
+                "_links": [
+                    "hal"
+                ],
                 "_files": [
                     "src/fem/nrf_fem_control.c"
                 ]
@@ -253,7 +253,10 @@
             {
                 "_attrs": [
                     "private"
-                ], 
+                ],
+                "_links": [
+                    "hal"
+                ],
                 "_files": [
                     "cmock\\mock_nrf_fem_control_api.c"
                 ], 
