@@ -1,0 +1,6 @@
+*.a
+*.o
+*.orig
+.deps/
+.dirstamp
+cmock/

@@ -1,0 +1,330 @@
+{
+    "nrf_802154": {
+        "_class": "nRF_drv_radio_802_15_4",
+        "_description": "-",
+        "_includes": [
+            "src",
+            "src/mac_features"
+        ],
+        "_headers": [
+            "src/nrf_802154.h",
+            "src/nrf_802154_ack_pending_bit.h",
+            "src/nrf_802154_core_hooks.h",
+            "src/nrf_802154_critical_section.h",
+            "src/nrf_802154_debug.h",
+            "src/nrf_802154_notification.h",
+            "src/nrf_802154_pib.h",
+            "src/nrf_802154_priority_drop.h",
+            "src/nrf_802154_procedures_duration.h",
+            "src/nrf_802154_request.h",
+            "src/nrf_802154_revision.h",
+            "src/nrf_802154_rx_buffer.h",
+            "src/mac_features/nrf_802154_filter.h"
+        ],
+        "_replacements": [
+            {
+                "_value": "DebugLevel=gdb3",
+                "_condition": "'armgcc' in _toolchains"
+            },
+            {
+                "_value": "OptimizationLevel=s",
+                "_condition": "'armgcc' in _toolchains"
+            }
+        ],
+        "_variants": [
+            {
+                "_attrs": [
+                    "public"
+                ],
+                "_files": [
+                    "src/nrf_802154.c",
+                    "src/nrf_802154_ack_pending_bit.c",
+                    "src/nrf_802154_core.c",
+                    "src/nrf_802154_core_hooks.c",
+                    "src/nrf_802154_critical_section.c",
+                    "src/nrf_802154_debug.c",
+                    "src/nrf_802154_pib.c",
+                    "src/nrf_802154_revision.c",
+                    "src/nrf_802154_rx_buffer.c",
+                    "src/mac_features/nrf_802154_ack_timeout.c",
+                    "src/mac_features/nrf_802154_csma_ca.c",
+                    "src/mac_features/nrf_802154_filter.c",
+                    "src/platform/clock/nrf_802154_clock_sdk.c",
+                    "src/platform/timer/nrf_802154_timer_nodrv.c",
+                    "src/timer_scheduler/nrf_802154_timer_sched.c",
+                    "src/nrf_802154_notification_swi.c",
+                    "src/nrf_802154_priority_drop_swi.c",
+                    "src/nrf_802154_request_swi.c",
+                    "src/nrf_802154_swi.c"
+                ],
+                "_links": [
+                    ["s140"],
+                    "nrf52840_xxaa"
+                ],
+                "_name": "swi"
+            },
+            {
+                "_attrs": [
+                    "public"
+                ],
+                "_files": [
+                    "src/nrf_802154.c",
+                    "src/nrf_802154_ack_pending_bit.c",
+                    "src/nrf_802154_core.c",
+                    "src/nrf_802154_core_hooks.c",
+                    "src/nrf_802154_critical_section.c",
+                    "src/nrf_802154_debug.c",
+                    "src/nrf_802154_pib.c",
+                    "src/nrf_802154_revision.c",
+                    "src/nrf_802154_rx_buffer.c",
+                    "src/mac_features/nrf_802154_ack_timeout.c",
+                    "src/mac_features/nrf_802154_csma_ca.c",
+                    "src/mac_features/nrf_802154_filter.c",
+                    "src/platform/clock/nrf_802154_clock_sdk.c",
+                    "src/platform/timer/nrf_802154_timer_nodrv.c",
+                    "src/timer_scheduler/nrf_802154_timer_sched.c",
+                    "src/nrf_802154_notification_direct.c",
+                    "src/nrf_802154_priority_drop_direct.c",
+                    "src/nrf_802154_request_direct.c"
+                ],
+                "_links": [
+                    "!s140",
+                    "nrf52840_xxaa"
+                ],
+                "_name": "direct"
+            },
+            {
+                "_attrs": [
+                    "private"
+                ],
+                "_links": [
+                    ["unity"]
+                ],  
+                "_files": [
+                    "cmock\\mock_nrf_802154.c",
+                    "cmock\\mock_nrf_802154_ack_pending_bit.c",
+                    "cmock\\mock_nrf_802154_core_hooks.c",
+                    "cmock\\mock_nrf_802154_critical_section.c",
+                    "cmock\\mock_nrf_802154_debug.c",
+                    "cmock\\mock_nrf_802154_filter.c",
+                    "cmock\\mock_nrf_802154_notification.c",
+                    "cmock\\mock_nrf_802154_pib.c",
+                    "cmock\\mock_nrf_802154_priority_drop.c",
+                    "cmock\\mock_nrf_802154_procedures_duration.c",
+                    "cmock\\mock_nrf_802154_request.c",
+                    "cmock\\mock_nrf_802154_revision.c",
+                    "cmock\\mock_nrf_802154_rx_buffer.c"
+                ],
+                "_includes": [
+                    "3|cmock"
+                ],
+                "_name": "cmock"
+            }, 
+            {
+                "_attrs": [
+                    "private"
+                ],
+                "_name": "file_included_by_test"
+            }
+        ]
+    },
+
+    "raal": {
+        "_class": "nRF_drv_radio_802_15_4",
+        "_description": "RAAL",
+        "_headers": [
+            "src/raal/nrf_raal_api.h"
+        ],
+        "_links": [
+            "hal"
+        ],
+        "_includes": [
+            "src/raal"
+        ],
+        "_variants": [
+            {
+                "_attrs": [
+                    "public"
+                ],
+                "_defines": [
+                    "RAAL_SIMULATOR"
+                ],
+                "_files": [
+                    "src/raal/simulator/nrf_raal_simulator.c"
+                ],
+                "_name": "simulator"
+            },
+            {
+                "_attrs": [
+                    "public"
+                ],
+                "_defines": [
+                    "RAAL_SINGLE_PHY"
+                ],
+                "_files": [
+                    "src/raal/single_phy/single_phy.c"
+                ],
+                "_name": "single_phy"
+            },
+            {
+                "_attrs": [
+                    "public"
+                ],
+                "_defines": [
+                    "RAAL_SOFTDEVICE"
+                ],
+                "_files": [
+                    "src/raal/softdevice/nrf_raal_softdevice.c"
+                ],
+                "_includes": [
+                    "src/raal/softdevice"
+                ],
+                "_links": [
+                    "nrf_drivers",
+                    "softdevice_sim",
+                    "s140"
+                ],
+                "_name": "softdevice"
+            },
+            {
+                "_attrs": [
+                    "private"
+                ], 
+                "_files": [
+                    "cmock\\mock_nrf_raal_api.c"
+                ], 
+                "_includes": [
+                    "3|cmock"
+                ], 
+                "_name": "cmock"
+            }, 
+            {
+                "_attrs": [
+                    "private"
+                ],
+                "_name": "file_included_by_test"
+            }
+        ]
+    },
+
+    "fem": {
+        "_class": "nRF_drv_radio_802_15_4",
+        "_description": "FEM",
+        "_headers": [
+            "src/fem/nrf_fem_control_api.h"
+        ],
+        "_links": [
+            "hal"
+        ],
+        "_includes": [
+            "src/fem"
+        ],
+        "_defines": [
+            "ENABLE_FEM"
+        ],
+        "_variants": [
+            {
+                "_attrs": [
+                    "public"
+                ],
+                "_files": [
+                    "src/fem/nrf_fem_control.c"
+                ]
+            },
+            {
+                "_attrs": [
+                    "private"
+                ], 
+                "_files": [
+                    "cmock\\mock_nrf_fem_control_api.c"
+                ], 
+                "_includes": [
+                    "3|cmock"
+                ], 
+                "_name": "cmock"
+            }, 
+            {
+                "_attrs": [
+                    "private"
+                ],
+                "_name": "file_included_by_test"
+            }
+        ]
+    },
+
+    "hal": {
+        "_class": "nRF_drv_radio_802_15_4",
+        "_description": "HAL",
+        "_headers": [
+            "external/hal/nrf_egu.h",
+            "external/hal/nrf_ppi.h",
+            "external/hal/nrf_timer.h",
+            "src/hal/nrf_radio.h"
+        ],
+        "_includes": [
+            "external",
+            "external/hal",
+            "src/hal"
+        ],
+        "_variants": [
+            {
+                "_attrs": [
+                    "public"
+                ]
+            },
+            {
+                "_attrs": [
+                    "private"
+                ], 
+                "_files": [
+                    "cmock\\mock_nrf_egu.c",
+                    "cmock\\mock_nrf_ppi.c",
+                    "cmock\\mock_nrf_radio.c",
+                    "cmock\\mock_nrf_timer.c"
+                ], 
+                "_includes": [
+                    "3|cmock"
+                ], 
+                "_name": "cmock"
+            }, 
+            {
+                "_attrs": [
+                    "private"
+                ],
+                "_name": "file_included_by_test"
+            }
+        ]
+    },
+
+    "cli": {
+        "_class": "nRF_drv_radio_802_15_4",
+        "_description": "This option enables CLI.",
+        "_defines": [
+            "ENABLE_CLI"
+        ]
+    },
+
+    "debug_log": {
+        "_class": "nRF_drv_radio_802_15_4",
+        "_description": "This option provides an array containing events logged by the driver.",
+        "_defines": [
+            "ENABLE_DEBUG_LOG"
+        ]
+    },
+
+    "debug_assert": {
+        "_class": "nRF_drv_radio_802_15_4",
+        "_description": "This option disables all IRQ on an assert and enters indefinite loop.",
+        "_defines": [
+            "ENABLE_DEBUG_ASSERT"
+        ]
+    },
+
+    "debug_gpio": {
+        "_class": "nRF_drv_radio_802_15_4",
+        "_description": "This option connects RADIO events with GPIO output.",
+        "_defines": [
+            "ENABLE_DEBUG_GPIO"
+        ]
+    }
+}
