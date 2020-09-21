@@ -57,7 +57,8 @@
 
 #include <stdint.h>
 #include "nrf.h"
-
+#include "nrf_svc.h"
+#include "nrf_error.h"
 #include "nrf_error_soc.h"
 
 #ifdef __cplusplus
@@ -85,7 +86,7 @@ extern "C" {
     | (1U << CCM_AAR_IRQn) \
     | (1U << TEMP_IRQn) \
     | (1U << __NRF_NVIC_NVMC_IRQn) \
-    | (1U << (uint32_t)SWI5_EGU5_IRQn) \
+    | (1U << (uint32_t)SWI5_IRQn) \
   ))
 
 /**@brief Interrupts used by the SoftDevice, with IRQn in the range 32-63. */

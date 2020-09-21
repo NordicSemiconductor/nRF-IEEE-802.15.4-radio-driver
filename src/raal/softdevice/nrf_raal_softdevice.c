@@ -327,12 +327,14 @@ static void timeslot_request(void)
 {
     timeslot_request_prepare();
 
+    m_timeslot_state = TIMESLOT_STATE_REQUESTED;
+
     // Request timeslot from SoftDevice.
     uint32_t err_code = sd_radio_request(&m_request);
 
-    if (err_code == NRF_SUCCESS)
+    if (err_code != NRF_SUCCESS)
     {
-        m_timeslot_state = TIMESLOT_STATE_REQUESTED;
+        m_timeslot_state = TIMESLOT_STATE_IDLE;
     }
 
     nrf_802154_log(EVENT_TIMESLOT_REQUEST, m_request.params.earliest.length_us);
@@ -689,6 +691,7 @@ void nrf_raal_init(void)
 
     uint32_t err_code = sd_radio_session_open(signal_handler);
     assert(err_code == NRF_SUCCESS);
+    (void)err_code;
 
     m_initialized = true;
 }
@@ -699,6 +702,7 @@ void nrf_raal_uninit(void)
 
     uint32_t err_code = sd_radio_session_close();
     assert(err_code == NRF_SUCCESS);
+    (void)err_code;
 
     m_continuous     = false;
     m_timeslot_state = TIMESLOT_STATE_IDLE;

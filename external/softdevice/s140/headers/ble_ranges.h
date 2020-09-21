@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012 - 2017, Nordic Semiconductor ASA
+ * Copyright (c) 2012 - 2018, Nordic Semiconductor ASA
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without modification,
@@ -67,15 +67,15 @@ extern "C" {
 #define BLE_SVC_LAST           0x6B       /**< Common BLE SVC last. */
 
 #define BLE_GAP_SVC_BASE       0x6C       /**< GAP BLE SVC base. */
-#define BLE_GAP_SVC_LAST       0x93       /**< GAP BLE SVC last. */
+#define BLE_GAP_SVC_LAST       0x9A       /**< GAP BLE SVC last. */
 
-#define BLE_GATTC_SVC_BASE     0x94       /**< GATTC BLE SVC base. */
-#define BLE_GATTC_SVC_LAST     0x9F       /**< GATTC BLE SVC last. */
+#define BLE_GATTC_SVC_BASE     0x9B       /**< GATTC BLE SVC base. */
+#define BLE_GATTC_SVC_LAST     0xA7       /**< GATTC BLE SVC last. */
 
-#define BLE_GATTS_SVC_BASE     0xA0       /**< GATTS BLE SVC base. */
-#define BLE_GATTS_SVC_LAST     0xAF       /**< GATTS BLE SVC last. */
+#define BLE_GATTS_SVC_BASE     0xA8       /**< GATTS BLE SVC base. */
+#define BLE_GATTS_SVC_LAST     0xB7       /**< GATTS BLE SVC last. */
 
-#define BLE_L2CAP_SVC_BASE     0xB0       /**< L2CAP BLE SVC base. */
+#define BLE_L2CAP_SVC_BASE     0xB8       /**< L2CAP BLE SVC base. */
 #define BLE_L2CAP_SVC_LAST     0xBF       /**< L2CAP BLE SVC last. */
 
 

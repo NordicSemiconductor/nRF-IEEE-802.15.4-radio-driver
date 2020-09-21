@@ -45,8 +45,13 @@
 #ifndef BLE_GATT_H__
 #define BLE_GATT_H__
 
-#include "ble_types.h"
+#include <stdint.h>
+#include "nrf_svc.h"
+#include "nrf_error.h"
+#include "ble_hci.h"
 #include "ble_ranges.h"
+#include "ble_types.h"
+#include "ble_err.h"
 
 #ifdef __cplusplus
 extern "C" {

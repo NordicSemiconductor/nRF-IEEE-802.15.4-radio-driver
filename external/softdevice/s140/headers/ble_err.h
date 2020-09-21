@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012 - 2017, Nordic Semiconductor ASA
+ * Copyright (c) 2012 - 2018, Nordic Semiconductor ASA
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without modification,
@@ -65,7 +65,7 @@ extern "C" {
 #define BLE_ERROR_NOT_ENABLED            (NRF_ERROR_STK_BASE_NUM+0x001) /**< @ref sd_ble_enable has not been called. */
 #define BLE_ERROR_INVALID_CONN_HANDLE    (NRF_ERROR_STK_BASE_NUM+0x002) /**< Invalid connection handle. */
 #define BLE_ERROR_INVALID_ATTR_HANDLE    (NRF_ERROR_STK_BASE_NUM+0x003) /**< Invalid attribute handle. */
-#define BLE_ERROR_NO_TX_PACKETS          (NRF_ERROR_STK_BASE_NUM+0x004) /**< Not enough application packets available on this connection. */
+#define BLE_ERROR_INVALID_ADV_HANDLE     (NRF_ERROR_STK_BASE_NUM+0x004) /**< Invalid advertising handle. */
 #define BLE_ERROR_INVALID_ROLE           (NRF_ERROR_STK_BASE_NUM+0x005) /**< Invalid role. */
 #define BLE_ERROR_BLOCKED_BY_OTHER_LINKS (NRF_ERROR_STK_BASE_NUM+0x006) /**< The attempt to change link settings failed due to the scheduling of other links. */
 /** @} */

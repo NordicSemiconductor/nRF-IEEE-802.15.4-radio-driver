@@ -47,10 +47,12 @@
 #ifndef NRF_SDM_H__
 #define NRF_SDM_H__
 
-#include "nrf_svc.h"
+#include <stdint.h>
 #include "nrf.h"
-#include "nrf_soc.h"
+#include "nrf_svc.h"
+#include "nrf_error.h"
 #include "nrf_error_sdm.h"
+#include "nrf_soc.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -65,7 +67,7 @@ extern "C" {
 #endif
 
 /** @brief The major version for the SoftDevice binary distributed with this header file. */
-#define SD_MAJOR_VERSION  (0)
+#define SD_MAJOR_VERSION  (6)
 
 /** @brief The minor version for the SoftDevice binary distributed with this header file. */
 #define SD_MINOR_VERSION  (0)
@@ -306,6 +308,7 @@ typedef void (*nrf_fault_handler_t)(uint32_t id, uint32_t pc, uint32_t info);
  * @retval ::NRF_ERROR_INVALID_STATE SoftDevice is already enabled, and the clock source and fault handler cannot be updated.
  * @retval ::NRF_ERROR_SDM_INCORRECT_INTERRUPT_CONFIGURATION SoftDevice interrupt is already enabled, or an enabled interrupt has an illegal priority level.
  * @retval ::NRF_ERROR_SDM_LFCLK_SOURCE_UNKNOWN Unknown low frequency clock source selected.
+ * @retval ::NRF_ERROR_INVALID_PARAM Invalid clock source configuration supplied in p_clock_lf_cfg.
  */
 SVCALL(SD_SOFTDEVICE_ENABLE, uint32_t, sd_softdevice_enable(nrf_clock_lf_cfg_t const * p_clock_lf_cfg, nrf_fault_handler_t fault_handler));
 

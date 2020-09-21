@@ -18,6 +18,7 @@
             "src/nrf_802154_procedures_duration.h",
             "src/nrf_802154_request.h",
             "src/nrf_802154_revision.h",
+            "src/nrf_802154_rssi.h",
             "src/nrf_802154_rx_buffer.h",
             "src/mac_features/nrf_802154_filter.h"
         ],
@@ -45,11 +46,13 @@
                     "src/nrf_802154_debug.c",
                     "src/nrf_802154_pib.c",
                     "src/nrf_802154_revision.c",
+                    "src/nrf_802154_rssi.c",
                     "src/nrf_802154_rx_buffer.c",
                     "src/mac_features/nrf_802154_ack_timeout.c",
                     "src/mac_features/nrf_802154_csma_ca.c",
                     "src/mac_features/nrf_802154_filter.c",
                     "src/platform/clock/nrf_802154_clock_sdk.c",
+                    "src/platform/temperature/nrf_802154_temperature_none.c",
                     "src/platform/timer/nrf_802154_timer_nodrv.c",
                     "src/timer_scheduler/nrf_802154_timer_sched.c",
                     "src/nrf_802154_notification_swi.c",
@@ -76,11 +79,13 @@
                     "src/nrf_802154_debug.c",
                     "src/nrf_802154_pib.c",
                     "src/nrf_802154_revision.c",
+                    "src/nrf_802154_rssi.c",
                     "src/nrf_802154_rx_buffer.c",
                     "src/mac_features/nrf_802154_ack_timeout.c",
                     "src/mac_features/nrf_802154_csma_ca.c",
                     "src/mac_features/nrf_802154_filter.c",
                     "src/platform/clock/nrf_802154_clock_sdk.c",
+                    "src/platform/temperature/nrf_802154_temperature_none.c",
                     "src/platform/timer/nrf_802154_timer_nodrv.c",
                     "src/timer_scheduler/nrf_802154_timer_sched.c",
                     "src/nrf_802154_notification_direct.c",
@@ -113,6 +118,7 @@
                     "cmock\\mock_nrf_802154_procedures_duration.c",
                     "cmock\\mock_nrf_802154_request.c",
                     "cmock\\mock_nrf_802154_revision.c",
+                    "cmock\\mock_nrf_802154_rssi.c",
                     "cmock\\mock_nrf_802154_rx_buffer.c"
                 ],
                 "_includes": [
@@ -139,7 +145,8 @@
             "hal"
         ],
         "_includes": [
-            "src/raal"
+            "src/raal",
+            "external/softdevice/s140/headers"
         ],
         "_variants": [
             {
@@ -325,6 +332,25 @@
         "_description": "This option connects RADIO events with GPIO output.",
         "_defines": [
             "ENABLE_DEBUG_GPIO"
+        ]
+    },
+
+    "ndebug": {
+        "_class": "nRF_drv_radio_802_15_4",
+        "_description": "This option enables NDEBUG compile option that removes asserts.",
+        "_defines": [
+            "NDEBUG"
+        ]
+    },
+
+    "lto": {
+        "_class": "nRF_drv_radio_802_15_4",
+        "_description": "This option enables Link Time Optimizations for driver applications build.",
+        "_replacements": [
+            {
+                "_value": "Lto=1",
+                "_condition": "'armgcc' in _toolchains"
+            }
         ]
     }
 }

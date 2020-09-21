@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015 - 2017, Nordic Semiconductor ASA
+ * Copyright (c) 2015 - 2018, Nordic Semiconductor ASA
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without modification,
@@ -48,10 +48,9 @@
 #define NRF_SOC_H__
 
 #include <stdint.h>
-#include <stdbool.h>
-#include "nrf_svc.h"
 #include "nrf.h"
-
+#include "nrf_svc.h"
+#include "nrf_error.h"
 #include "nrf_error_soc.h"
 
 #ifdef __cplusplus
@@ -63,7 +62,7 @@ extern "C" {
 
 /**@brief The number of the lowest SVC number reserved for the SoC library. */
 #define SOC_SVC_BASE               (0x20)                   /**< Base value for SVCs that are available when the SoftDevice is disabled. */
-#define SOC_SVC_BASE_NOT_AVAILABLE (0x2B)                   /**< Base value for SVCs that are not available when the SoftDevice is disabled. */
+#define SOC_SVC_BASE_NOT_AVAILABLE (0x2C)                   /**< Base value for SVCs that are not available when the SoftDevice is disabled. */
 
 /**@brief Guaranteed time for application to process radio inactive notification. */
 #define NRF_RADIO_NOTIFICATION_INACTIVE_GUARANTEED_TIME_US  (62)
@@ -81,11 +80,11 @@ extern "C" {
 #define SOC_ECB_CLEARTEXT_LENGTH          (16)                       /**< ECB cleartext length. */
 #define SOC_ECB_CIPHERTEXT_LENGTH         (SOC_ECB_CLEARTEXT_LENGTH) /**< ECB ciphertext length. */
 
-#define SD_EVT_IRQn                       (SWI2_EGU2_IRQn)        /**< SoftDevice Event IRQ number. Used for both protocol events and SoC events. */
-#define SD_EVT_IRQHandler                 (SWI2_EGU2_IRQHandler)  /**< SoftDevice Event IRQ handler. Used for both protocol events and SoC events.
+#define SD_EVT_IRQn                       (SWI2_IRQn)        /**< SoftDevice Event IRQ number. Used for both protocol events and SoC events. */
+#define SD_EVT_IRQHandler                 (SWI2_IRQHandler)  /**< SoftDevice Event IRQ handler. Used for both protocol events and SoC events.
                                                                        The default interrupt priority for this handler is set to 4 */
-#define RADIO_NOTIFICATION_IRQn           (SWI1_EGU1_IRQn)        /**< The radio notification IRQ number. */
-#define RADIO_NOTIFICATION_IRQHandler     (SWI1_EGU1_IRQHandler)  /**< The radio notification IRQ handler.
+#define RADIO_NOTIFICATION_IRQn           (SWI1_IRQn)        /**< The radio notification IRQ number. */
+#define RADIO_NOTIFICATION_IRQHandler     (SWI1_IRQHandler)  /**< The radio notification IRQ handler.
                                                                        The default interrupt priority for this handler is set to 4 */
 #define NRF_RADIO_LENGTH_MIN_US           (100)               /**< The shortest allowed radio timeslot, in microseconds. */
 #define NRF_RADIO_LENGTH_MAX_US           (100000)            /**< The longest allowed radio timeslot, in microseconds. */
@@ -104,53 +103,55 @@ extern "C" {
 /**@brief The SVC numbers used by the SVC functions in the SoC library. */
 enum NRF_SOC_SVCS
 {
-  SD_PPI_CHANNEL_ENABLE_GET = SOC_SVC_BASE,
-  SD_PPI_CHANNEL_ENABLE_SET,
-  SD_PPI_CHANNEL_ENABLE_CLR,
-  SD_PPI_CHANNEL_ASSIGN,
-  SD_PPI_GROUP_TASK_ENABLE,
-  SD_PPI_GROUP_TASK_DISABLE,
-  SD_PPI_GROUP_ASSIGN,
-  SD_PPI_GROUP_GET,
-  SD_FLASH_PAGE_ERASE,
-  SD_FLASH_WRITE,
-  SD_FLASH_PROTECT,
-  SD_MUTEX_NEW = SOC_SVC_BASE_NOT_AVAILABLE,
-  SD_MUTEX_ACQUIRE,
-  SD_MUTEX_RELEASE,
-  SD_RAND_APPLICATION_POOL_CAPACITY_GET,
-  SD_RAND_APPLICATION_BYTES_AVAILABLE_GET,
-  SD_RAND_APPLICATION_VECTOR_GET,
-  SD_POWER_MODE_SET,
-  SD_POWER_SYSTEM_OFF,
-  SD_POWER_RESET_REASON_GET,
-  SD_POWER_RESET_REASON_CLR,
-  SD_POWER_POF_ENABLE,
-  SD_POWER_POF_THRESHOLD_SET,
-  SD_POWER_RAM_POWER_SET,
-  SD_POWER_RAM_POWER_CLR,
-  SD_POWER_RAM_POWER_GET,
-  SD_POWER_GPREGRET_SET,
-  SD_POWER_GPREGRET_CLR,
-  SD_POWER_GPREGRET_GET,
-  SD_POWER_DCDC_MODE_SET,
-  SD_APP_EVT_WAIT,
-  SD_CLOCK_HFCLK_REQUEST,
-  SD_CLOCK_HFCLK_RELEASE,
-  SD_CLOCK_HFCLK_IS_RUNNING,
-  SD_RADIO_NOTIFICATION_CFG_SET,
-  SD_ECB_BLOCK_ENCRYPT,
-  SD_ECB_BLOCKS_ENCRYPT,
-  SD_RADIO_SESSION_OPEN,
-  SD_RADIO_SESSION_CLOSE,
-  SD_RADIO_REQUEST,
-  SD_EVT_GET,
-  SD_TEMP_GET,
-  SD_POWER_USBPWRRDY_ENABLE,
-  SD_POWER_USBDETECTED_ENABLE,
-  SD_POWER_USBREMOVED_ENABLE,
-  SD_POWER_USBREGSTATUS_GET,
-  SVC_SOC_LAST
+  SD_PPI_CHANNEL_ENABLE_GET   = SOC_SVC_BASE,
+  SD_PPI_CHANNEL_ENABLE_SET   = SOC_SVC_BASE + 1,
+  SD_PPI_CHANNEL_ENABLE_CLR   = SOC_SVC_BASE + 2,
+  SD_PPI_CHANNEL_ASSIGN       = SOC_SVC_BASE + 3,
+  SD_PPI_GROUP_TASK_ENABLE    = SOC_SVC_BASE + 4,
+  SD_PPI_GROUP_TASK_DISABLE   = SOC_SVC_BASE + 5,
+  SD_PPI_GROUP_ASSIGN         = SOC_SVC_BASE + 6,
+  SD_PPI_GROUP_GET            = SOC_SVC_BASE + 7,
+  SD_FLASH_PAGE_ERASE         = SOC_SVC_BASE + 8,
+  SD_FLASH_WRITE              = SOC_SVC_BASE + 9,
+  SD_PROTECTED_REGISTER_WRITE = SOC_SVC_BASE + 11,
+  SD_MUTEX_NEW                            = SOC_SVC_BASE_NOT_AVAILABLE,
+  SD_MUTEX_ACQUIRE                        = SOC_SVC_BASE_NOT_AVAILABLE + 1,
+  SD_MUTEX_RELEASE                        = SOC_SVC_BASE_NOT_AVAILABLE + 2,
+  SD_RAND_APPLICATION_POOL_CAPACITY_GET   = SOC_SVC_BASE_NOT_AVAILABLE + 3,
+  SD_RAND_APPLICATION_BYTES_AVAILABLE_GET = SOC_SVC_BASE_NOT_AVAILABLE + 4,
+  SD_RAND_APPLICATION_VECTOR_GET          = SOC_SVC_BASE_NOT_AVAILABLE + 5,
+  SD_POWER_MODE_SET                       = SOC_SVC_BASE_NOT_AVAILABLE + 6,
+  SD_POWER_SYSTEM_OFF                     = SOC_SVC_BASE_NOT_AVAILABLE + 7,
+  SD_POWER_RESET_REASON_GET               = SOC_SVC_BASE_NOT_AVAILABLE + 8,
+  SD_POWER_RESET_REASON_CLR               = SOC_SVC_BASE_NOT_AVAILABLE + 9,
+  SD_POWER_POF_ENABLE                     = SOC_SVC_BASE_NOT_AVAILABLE + 10,
+  SD_POWER_POF_THRESHOLD_SET              = SOC_SVC_BASE_NOT_AVAILABLE + 11,
+  SD_POWER_POF_THRESHOLDVDDH_SET          = SOC_SVC_BASE_NOT_AVAILABLE + 12,
+  SD_POWER_RAM_POWER_SET                  = SOC_SVC_BASE_NOT_AVAILABLE + 13,
+  SD_POWER_RAM_POWER_CLR                  = SOC_SVC_BASE_NOT_AVAILABLE + 14,
+  SD_POWER_RAM_POWER_GET                  = SOC_SVC_BASE_NOT_AVAILABLE + 15,
+  SD_POWER_GPREGRET_SET                   = SOC_SVC_BASE_NOT_AVAILABLE + 16,
+  SD_POWER_GPREGRET_CLR                   = SOC_SVC_BASE_NOT_AVAILABLE + 17,
+  SD_POWER_GPREGRET_GET                   = SOC_SVC_BASE_NOT_AVAILABLE + 18,
+  SD_POWER_DCDC_MODE_SET                  = SOC_SVC_BASE_NOT_AVAILABLE + 19,
+  SD_POWER_DCDC0_MODE_SET                 = SOC_SVC_BASE_NOT_AVAILABLE + 20,
+  SD_APP_EVT_WAIT                         = SOC_SVC_BASE_NOT_AVAILABLE + 21,
+  SD_CLOCK_HFCLK_REQUEST                  = SOC_SVC_BASE_NOT_AVAILABLE + 22,
+  SD_CLOCK_HFCLK_RELEASE                  = SOC_SVC_BASE_NOT_AVAILABLE + 23,
+  SD_CLOCK_HFCLK_IS_RUNNING               = SOC_SVC_BASE_NOT_AVAILABLE + 24,
+  SD_RADIO_NOTIFICATION_CFG_SET           = SOC_SVC_BASE_NOT_AVAILABLE + 25,
+  SD_ECB_BLOCK_ENCRYPT                    = SOC_SVC_BASE_NOT_AVAILABLE + 26,
+  SD_ECB_BLOCKS_ENCRYPT                   = SOC_SVC_BASE_NOT_AVAILABLE + 27,
+  SD_RADIO_SESSION_OPEN                   = SOC_SVC_BASE_NOT_AVAILABLE + 28,
+  SD_RADIO_SESSION_CLOSE                  = SOC_SVC_BASE_NOT_AVAILABLE + 29,
+  SD_RADIO_REQUEST                        = SOC_SVC_BASE_NOT_AVAILABLE + 30,
+  SD_EVT_GET                              = SOC_SVC_BASE_NOT_AVAILABLE + 31,
+  SD_TEMP_GET                             = SOC_SVC_BASE_NOT_AVAILABLE + 32,
+  SD_POWER_USBPWRRDY_ENABLE               = SOC_SVC_BASE_NOT_AVAILABLE + 33,
+  SD_POWER_USBDETECTED_ENABLE             = SOC_SVC_BASE_NOT_AVAILABLE + 34,
+  SD_POWER_USBREMOVED_ENABLE              = SOC_SVC_BASE_NOT_AVAILABLE + 35,
+  SD_POWER_USBREGSTATUS_GET               = SOC_SVC_BASE_NOT_AVAILABLE + 36,
+  SVC_SOC_LAST                            = SOC_SVC_BASE_NOT_AVAILABLE + 37
 };
 
 /**@brief Possible values of a ::nrf_mutex_t. */
@@ -183,6 +184,27 @@ enum NRF_POWER_THRESHOLDS
   NRF_POWER_THRESHOLD_V26,       /**< 2.6 Volts power failure threshold. */
   NRF_POWER_THRESHOLD_V27,       /**< 2.7 Volts power failure threshold. */
   NRF_POWER_THRESHOLD_V28        /**< 2.8 Volts power failure threshold. */
+};
+
+/**@brief Power failure thresholds for high voltage */
+enum NRF_POWER_THRESHOLDVDDHS
+{
+  NRF_POWER_THRESHOLDVDDH_V27,       /**< 2.7 Volts power failure threshold. */
+  NRF_POWER_THRESHOLDVDDH_V28,       /**< 2.8 Volts power failure threshold. */
+  NRF_POWER_THRESHOLDVDDH_V29,       /**< 2.9 Volts power failure threshold. */
+  NRF_POWER_THRESHOLDVDDH_V30,       /**< 3.0 Volts power failure threshold. */
+  NRF_POWER_THRESHOLDVDDH_V31,       /**< 3.1 Volts power failure threshold. */
+  NRF_POWER_THRESHOLDVDDH_V32,       /**< 3.2 Volts power failure threshold. */
+  NRF_POWER_THRESHOLDVDDH_V33,       /**< 3.3 Volts power failure threshold. */
+  NRF_POWER_THRESHOLDVDDH_V34,       /**< 3.4 Volts power failure threshold. */
+  NRF_POWER_THRESHOLDVDDH_V35,       /**< 3.5 Volts power failure threshold. */
+  NRF_POWER_THRESHOLDVDDH_V36,       /**< 3.6 Volts power failure threshold. */
+  NRF_POWER_THRESHOLDVDDH_V37,       /**< 3.7 Volts power failure threshold. */
+  NRF_POWER_THRESHOLDVDDH_V38,       /**< 3.8 Volts power failure threshold. */
+  NRF_POWER_THRESHOLDVDDH_V39,       /**< 3.9 Volts power failure threshold. */
+  NRF_POWER_THRESHOLDVDDH_V40,       /**< 4.0 Volts power failure threshold. */
+  NRF_POWER_THRESHOLDVDDH_V41,       /**< 4.1 Volts power failure threshold. */
+  NRF_POWER_THRESHOLDVDDH_V42        /**< 4.2 Volts power failure threshold. */
 };
 
 
@@ -524,7 +546,11 @@ SVCALL(SD_POWER_USBREMOVED_ENABLE, uint32_t, sd_power_usbremoved_enable(uint8_t 
  */
 SVCALL(SD_POWER_USBREGSTATUS_GET, uint32_t, sd_power_usbregstatus_get(uint32_t * usbregstatus));
 
-/**@brief Sets the power-fail threshold value.
+/**@brief Sets the power failure comparator threshold value.
+ *
+ * @note: Power failure comparator threshold setting. This setting applies both for normal voltage
+ *        mode (supply connected to both VDD and VDDH) and high voltage mode (supply connected to
+ *        VDDH only).
  *
  * @param[in] threshold The power-fail threshold value to use, see @ref NRF_POWER_THRESHOLDS.
  *
@@ -532,6 +558,19 @@ SVCALL(SD_POWER_USBREGSTATUS_GET, uint32_t, sd_power_usbregstatus_get(uint32_t *
  * @retval ::NRF_ERROR_SOC_POWER_POF_THRESHOLD_UNKNOWN The power failure threshold is unknown.
  */
 SVCALL(SD_POWER_POF_THRESHOLD_SET, uint32_t, sd_power_pof_threshold_set(uint8_t threshold));
+
+/**@brief Sets the power failure comparator threshold value for high voltage.
+ *
+ * @note: Power failure comparator threshold setting for high voltage mode (supply connected to
+ *        VDDH only). This setting does not apply for normal voltage mode (supply connected to both
+ *        VDD and VDDH).
+ *
+ * @param[in] threshold The power-fail threshold value to use, see @ref NRF_POWER_THRESHOLDVDDHS.
+ *
+ * @retval ::NRF_SUCCESS The power failure threshold was set.
+ * @retval ::NRF_ERROR_SOC_POWER_POF_THRESHOLD_UNKNOWN The power failure threshold is unknown.
+ */
+SVCALL(SD_POWER_POF_THRESHOLDVDDH_SET, uint32_t, sd_power_pof_thresholdvddh_set(uint8_t threshold));
 
 /**@brief Writes the NRF_POWER->RAM[index].POWERSET register.
  *
@@ -587,9 +626,7 @@ SVCALL(SD_POWER_GPREGRET_CLR, uint32_t, sd_power_gpregret_clr(uint32_t gpregret_
  */
 SVCALL(SD_POWER_GPREGRET_GET, uint32_t, sd_power_gpregret_get(uint32_t gpregret_id, uint32_t *p_gpregret));
 
-/**@brief Sets the DCDC mode.
- *
- * Enable or disable the DCDC peripheral.
+/**@brief Enable or disable the DC/DC regulator for the regulator stage 1 (REG1).
  *
  * @param[in] dcdc_mode The mode of the DCDC, see @ref NRF_POWER_DCDC_MODES.
  *
@@ -597,6 +634,17 @@ SVCALL(SD_POWER_GPREGRET_GET, uint32_t, sd_power_gpregret_get(uint32_t gpregret_
  * @retval ::NRF_ERROR_INVALID_PARAM The DCDC mode is invalid.
  */
 SVCALL(SD_POWER_DCDC_MODE_SET, uint32_t, sd_power_dcdc_mode_set(uint8_t dcdc_mode));
+
+/**@brief Enable or disable the DC/DC regulator for the regulator stage 0 (REG0).
+ *
+ * For more details on the REG0 stage, please see product specification.
+ *
+ * @param[in] dcdc_mode The mode of the DCDC0, see @ref NRF_POWER_DCDC_MODES.
+ *
+ * @retval ::NRF_SUCCESS
+ * @retval ::NRF_ERROR_INVALID_PARAM The dcdc_mode is invalid.
+ */
+SVCALL(SD_POWER_DCDC0_MODE_SET, uint32_t, sd_power_dcdc0_mode_set(uint8_t dcdc_mode));
 
 /**@brief Request the high frequency crystal oscillator.
  *
@@ -839,6 +887,8 @@ SVCALL(SD_TEMP_GET, uint32_t, sd_temp_get(int32_t * p_temp));
 *        and the command parameters).
 *      - The data in the p_src buffer should not be modified before the @ref NRF_EVT_FLASH_OPERATION_SUCCESS
 *        or the @ref NRF_EVT_FLASH_OPERATION_ERROR have been received if the SoftDevice is enabled.
+*      - This call will make the SoftDevice trigger a hardfault when the page is written, if it is
+*        protected.
 *
 *
 * @param[in]  p_dst Pointer to start of flash location to be written.
@@ -849,7 +899,7 @@ SVCALL(SD_TEMP_GET, uint32_t, sd_temp_get(int32_t * p_temp));
 * @retval ::NRF_ERROR_INVALID_ADDR   Tried to write to a non existing flash address, or p_dst or p_src was unaligned.
 * @retval ::NRF_ERROR_BUSY           The previous command has not yet completed.
 * @retval ::NRF_ERROR_INVALID_LENGTH Size was 0, or higher than the maximum allowed size.
-* @retval ::NRF_ERROR_FORBIDDEN      Tried to write to or read from protected location.
+* @retval ::NRF_ERROR_FORBIDDEN      Tried to write to an address outside the application flash area.
 * @retval ::NRF_SUCCESS              The command was accepted.
 */
 SVCALL(SD_FLASH_WRITE, uint32_t, sd_flash_write(uint32_t * p_dst, uint32_t const * p_src, uint32_t size));
@@ -872,6 +922,8 @@ SVCALL(SD_FLASH_WRITE, uint32_t, sd_flash_write(uint32_t * p_dst, uint32_t const
 *        they will not interfere with the flash access. This means that all interrupts will be blocked
 *        for a predictable time (depending on the NVMC specification in the device's Product Specification
 *        and the command parameters).
+*      - This call will make the SoftDevice trigger a hardfault when the page is erased, if it is
+*        protected.
 *
 *
 * @param[in]  page_number           Page number of the page to erase
@@ -879,29 +931,12 @@ SVCALL(SD_FLASH_WRITE, uint32_t, sd_flash_write(uint32_t * p_dst, uint32_t const
 * @retval ::NRF_ERROR_INTERNAL      If a new session could not be opened due to an internal error.
 * @retval ::NRF_ERROR_INVALID_ADDR  Tried to erase to a non existing flash page.
 * @retval ::NRF_ERROR_BUSY          The previous command has not yet completed.
-* @retval ::NRF_ERROR_FORBIDDEN     Tried to erase a protected page.
+* @retval ::NRF_ERROR_FORBIDDEN     Tried to erase a page outside the application flash area.
 * @retval ::NRF_SUCCESS             The command was accepted.
 */
 SVCALL(SD_FLASH_PAGE_ERASE, uint32_t, sd_flash_page_erase(uint32_t page_number));
 
 
-/**@brief Flash Protection set
- *
- * Commands to set the flash protection configuration registers.
-   This sets the CONFIGx registers of the BPROT peripheral.
- *
- * @note To read the values read them directly. They are only write-protected.
- *
- * @param[in]  block_cfg0 Value to be written to the configuration register.
- * @param[in]  block_cfg1 Value to be written to the configuration register.
- * @param[in]  block_cfg2 Value to be written to the configuration register.
- * @param[in]  block_cfg3 Value to be written to the configuration register.
- *
- * @retval ::NRF_ERROR_FORBIDDEN Tried to protect the SoftDevice.
- * @retval ::NRF_ERROR_NOT_SUPPORTED Not supported for the device.
- * @retval ::NRF_SUCCESS Values successfully written to configuration registers.
- */
-SVCALL(SD_FLASH_PROTECT, uint32_t, sd_flash_protect(uint32_t block_cfg0, uint32_t block_cfg1, uint32_t block_cfg2, uint32_t block_cfg3));
 
 /**@brief Opens a session for radio timeslot requests.
  *
@@ -969,6 +1004,27 @@ SVCALL(SD_FLASH_PROTECT, uint32_t, sd_flash_protect(uint32_t block_cfg0, uint32_
  * @retval ::NRF_SUCCESS Otherwise.
  */
  SVCALL(SD_RADIO_REQUEST, uint32_t, sd_radio_request(nrf_radio_request_t const * p_request));
+
+/**@brief Write register protected by the SoftDevice
+ *
+ * This function writes to a register that is write-protected by the SoftDevice. Please refer to your
+ * SoftDevice Specification for more details about which registers that are protected by SoftDevice.
+ * This function can write to the following protected peripheral:
+ *  - ACL
+ *
+ * @note Protected registers may be read directly.
+ * @note Register that are write-once will return @ref NRF_SUCCESS on second set, even the value in
+ *       the register has not changed. See the Product Specification for more details about register
+ *       properties.
+ *
+ * @param[in]  p_register Pointer to register to be written.
+ * @param[in]  value Value to be written to the register.
+ *
+ * @retval ::NRF_ERROR_INVALID_ADDR This function can not write to the reguested register.
+ * @retval ::NRF_SUCCESS Value successfully written to register.
+ *
+ */
+SVCALL(SD_PROTECTED_REGISTER_WRITE, uint32_t, sd_protected_register_write(volatile uint32_t * p_register, uint32_t value));
 
 /**@} */
 

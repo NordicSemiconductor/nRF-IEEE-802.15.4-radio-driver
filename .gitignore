@@ -3,4 +3,6 @@
 *.orig
 .deps/
 .dirstamp
+build/
 cmock/
+gcc/

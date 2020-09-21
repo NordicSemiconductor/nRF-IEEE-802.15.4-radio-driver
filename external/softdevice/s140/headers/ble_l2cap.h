@@ -45,10 +45,12 @@
 #ifndef BLE_L2CAP_H__
 #define BLE_L2CAP_H__
 
-#include "ble_types.h"
-#include "ble_ranges.h"
-#include "ble_err.h"
+#include <stdint.h>
 #include "nrf_svc.h"
+#include "nrf_error.h"
+#include "ble_ranges.h"
+#include "ble_types.h"
+#include "ble_err.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -82,32 +84,32 @@ extern "C" {
 /**@brief L2CAP API SVC numbers. */
 enum BLE_L2CAP_SVCS
 {
-  SD_BLE_L2CAP_CH_SETUP = BLE_L2CAP_SVC_BASE,           /**< Set up an L2CAP channel. */
-  SD_BLE_L2CAP_CH_RELEASE,                              /**< Release an L2CAP channel. */
-  SD_BLE_L2CAP_CH_RX,                                   /**< Receive an SDU on an L2CAP channel. */
-  SD_BLE_L2CAP_CH_TX,                                   /**< Transmit an SDU on an L2CAP channel. */
-  SD_BLE_L2CAP_CH_FLOW_CONTROL,                         /**< Advanced SDU reception flow control. */
+  SD_BLE_L2CAP_CH_SETUP        = BLE_L2CAP_SVC_BASE + 0, /**< Set up an L2CAP channel. */
+  SD_BLE_L2CAP_CH_RELEASE      = BLE_L2CAP_SVC_BASE + 1, /**< Release an L2CAP channel. */
+  SD_BLE_L2CAP_CH_RX           = BLE_L2CAP_SVC_BASE + 2, /**< Receive an SDU on an L2CAP channel. */
+  SD_BLE_L2CAP_CH_TX           = BLE_L2CAP_SVC_BASE + 3, /**< Transmit an SDU on an L2CAP channel. */
+  SD_BLE_L2CAP_CH_FLOW_CONTROL = BLE_L2CAP_SVC_BASE + 4, /**< Advanced SDU reception flow control. */
 };
 
 /**@brief L2CAP Event IDs. */
 enum BLE_L2CAP_EVTS
 {
-  BLE_L2CAP_EVT_CH_SETUP_REQUEST = BLE_L2CAP_EVT_BASE,  /**< L2CAP Channel Setup Request event.
-                                                          \n See @ref ble_l2cap_evt_ch_setup_request_t. */
-  BLE_L2CAP_EVT_CH_SETUP_REFUSED,                       /**< L2CAP Channel Setup Refused event.
-                                                          \n See @ref ble_l2cap_evt_ch_setup_refused_t. */
-  BLE_L2CAP_EVT_CH_SETUP,                               /**< L2CAP Channel Setup Completed event.
-                                                          \n See @ref ble_l2cap_evt_ch_setup_t. */
-  BLE_L2CAP_EVT_CH_RELEASED,                            /**< L2CAP Channel Released event.
-                                                          \n No additional event structure applies. */
-  BLE_L2CAP_EVT_CH_SDU_BUF_RELEASED,                    /**< L2CAP Channel SDU data buffer released event.
-                                                          \n See @ref ble_l2cap_evt_ch_sdu_buf_released_t. */
-  BLE_L2CAP_EVT_CH_CREDIT,                              /**< L2CAP Channel Credit received.
-                                                          \n See @ref ble_l2cap_evt_ch_credit_t. */
-  BLE_L2CAP_EVT_CH_RX,                                  /**< L2CAP Channel SDU received.
-                                                          \n See @ref ble_l2cap_evt_ch_rx_t. */
-  BLE_L2CAP_EVT_CH_TX,                                  /**< L2CAP Channel SDU transmitted.
-                                                          \n See @ref ble_l2cap_evt_ch_tx_t. */
+  BLE_L2CAP_EVT_CH_SETUP_REQUEST    = BLE_L2CAP_EVT_BASE + 0,    /**< L2CAP Channel Setup Request event.
+                                                                   \n See @ref ble_l2cap_evt_ch_setup_request_t. */
+  BLE_L2CAP_EVT_CH_SETUP_REFUSED    = BLE_L2CAP_EVT_BASE + 1,    /**< L2CAP Channel Setup Refused event.
+                                                                   \n See @ref ble_l2cap_evt_ch_setup_refused_t. */
+  BLE_L2CAP_EVT_CH_SETUP            = BLE_L2CAP_EVT_BASE + 2,    /**< L2CAP Channel Setup Completed event.
+                                                                   \n See @ref ble_l2cap_evt_ch_setup_t. */
+  BLE_L2CAP_EVT_CH_RELEASED         = BLE_L2CAP_EVT_BASE + 3,    /**< L2CAP Channel Released event.
+                                                                   \n No additional event structure applies. */
+  BLE_L2CAP_EVT_CH_SDU_BUF_RELEASED = BLE_L2CAP_EVT_BASE + 4,    /**< L2CAP Channel SDU data buffer released event.
+                                                                   \n See @ref ble_l2cap_evt_ch_sdu_buf_released_t. */
+  BLE_L2CAP_EVT_CH_CREDIT           = BLE_L2CAP_EVT_BASE + 5,    /**< L2CAP Channel Credit received.
+                                                                   \n See @ref ble_l2cap_evt_ch_credit_t. */
+  BLE_L2CAP_EVT_CH_RX               = BLE_L2CAP_EVT_BASE + 6,    /**< L2CAP Channel SDU received.
+                                                                   \n See @ref ble_l2cap_evt_ch_rx_t. */
+  BLE_L2CAP_EVT_CH_TX               = BLE_L2CAP_EVT_BASE + 7,   /**< L2CAP Channel SDU transmitted.
+                                                                   \n See @ref ble_l2cap_evt_ch_tx_t. */
 };
 
 /** @} */

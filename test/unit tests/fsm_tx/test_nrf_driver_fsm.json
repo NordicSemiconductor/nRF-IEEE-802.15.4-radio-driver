@@ -1,0 +1,19 @@
+{
+    "_attrs": [
+        "test"
+      ],
+    "_links": [
+        "appskeleton_unity_nrf52",
+        "nrf_802154:cmock",
+        "raal:cmock",
+        "fem:cmock",
+        "hal:cmock"
+    ],
+    "_defines": [
+        "NRF52840_XXAA"
+    ],
+    "_toolchains": [
+        "gcc"
+    ],
+    "_name": "test_nrf_driver_fsm_tx"
+}
