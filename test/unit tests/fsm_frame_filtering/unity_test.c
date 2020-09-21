@@ -572,6 +572,8 @@ void test_OnBcmatchEventStateRx_TransactionShallBeAbortedIfHeaderPartFilteringFa
     nrf_802154_filter_frame_part_ExpectAndReturn(m_test_rx_buffer.psdu, NULL, NRF_802154_RX_ERROR_INVALID_FRAME);
     nrf_802154_filter_frame_part_IgnoreArg_p_num_bytes();
 
+    nrf_802154_pib_promiscuous_get_ExpectAndReturn(false);
+
     mock_rx_terminate();
     mock_receive_begin(true, NRF_RADIO_SHORT_ADDRESS_RSSISTART_MASK |
                              NRF_RADIO_SHORT_END_DISABLE_MASK |
@@ -605,6 +607,30 @@ void test_OnBcmatchEventStateRx_TransactionShallBeAbortedIfDstAddrDoesNotMatch(v
                              NRF_RADIO_SHORT_ADDRESS_BCSTART_MASK);
 
     mock_receive_failed_notify(NRF_802154_RX_ERROR_INVALID_DEST_ADDR);
+
+    irq_bcmatch_state_rx();
+}
+
+void test_OnBcmatchEventStateRx_TransactionShallBeAbortedIfFrameLengthInvalidInPromiscuousMode(void)
+{
+    uint8_t expected_size = PHR_SIZE + FCF_SIZE;
+    uint8_t expected_bcc  = (PHR_SIZE + FCF_SIZE) * 8;
+
+    m_flags.rx_timeslot_requested = true;
+
+    nrf_radio_bcc_get_ExpectAndReturn(expected_bcc);
+    nrf_radio_event_get_ExpectAndReturn(NRF_RADIO_EVENT_CRCERROR, false);
+
+    nrf_802154_filter_frame_part_ExpectAndReturn(m_test_rx_buffer.psdu, NULL, NRF_802154_RX_ERROR_INVALID_LENGTH);
+    nrf_802154_filter_frame_part_IgnoreArg_p_num_bytes();
+
+    mock_rx_terminate();
+    mock_receive_begin(true, NRF_RADIO_SHORT_ADDRESS_RSSISTART_MASK |
+                             NRF_RADIO_SHORT_END_DISABLE_MASK |
+                             NRF_RADIO_SHORT_RXREADY_START_MASK |
+                             NRF_RADIO_SHORT_ADDRESS_BCSTART_MASK);
+
+    mock_receive_failed_notify(NRF_802154_RX_ERROR_INVALID_LENGTH);
 
     irq_bcmatch_state_rx();
 }
@@ -699,6 +725,8 @@ void test_OnBcmatchEventStateRx_TimeslotShouldBeRequested(void)
 
     nrf_802154_rx_duration_get_ExpectAndReturn(m_test_rx_buffer.psdu[0], false, duration);
     nrf_802154_rsch_timeslot_request_ExpectAndReturn(duration, true);
+
+    nrf_802154_core_hooks_rx_started_Expect();
 
     irq_bcmatch_state_rx();
 
@@ -929,6 +957,8 @@ void test_OnBcmatchEventStateRx_ShallClearPsduBeingReceivedFlagOnFailedFiltering
 
     nrf_802154_filter_frame_part_ExpectAndReturn(m_test_rx_buffer.psdu, NULL, NRF_802154_RX_ERROR_INVALID_FRAME);
     nrf_802154_filter_frame_part_IgnoreArg_p_num_bytes();
+
+    nrf_802154_pib_promiscuous_get_ExpectAndReturn(false);
 
     mock_rx_terminate();
     mock_receive_begin(true, NRF_RADIO_SHORT_ADDRESS_RSSISTART_MASK |

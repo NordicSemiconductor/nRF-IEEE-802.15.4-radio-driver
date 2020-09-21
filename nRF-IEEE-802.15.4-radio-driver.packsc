@@ -4,7 +4,8 @@
         "_description": "-",
         "_includes": [
             "src",
-            "src/mac_features"
+            "src/mac_features",
+            "src/rsch"
         ],
         "_headers": [
             "src/nrf_802154.h",
@@ -18,11 +19,12 @@
             "src/nrf_802154_procedures_duration.h",
             "src/nrf_802154_request.h",
             "src/nrf_802154_revision.h",
-            "src/nrf_802154_rsch.h",
             "src/nrf_802154_rssi.h",
             "src/nrf_802154_rx_buffer.h",
             "src/nrf_802154_timer_coord.h",
-            "src/mac_features/nrf_802154_filter.h"
+            "src/mac_features/nrf_802154_filter.h",
+            "src/rsch/nrf_802154_rsch.h",
+            "src/rsch/nrf_802154_rsch_crit_sect.h"
         ],
         "_replacements": [
             {
@@ -48,7 +50,6 @@
                     "src/nrf_802154_debug.c",
                     "src/nrf_802154_pib.c",
                     "src/nrf_802154_revision.c",
-                    "src/nrf_802154_rsch.c",
                     "src/nrf_802154_rssi.c",
                     "src/nrf_802154_rx_buffer.c",
                     "src/nrf_802154_timer_coord.c",
@@ -60,6 +61,8 @@
                     "src/platform/hp_timer/nrf_802154_hp_timer.c",
                     "src/platform/lp_timer/nrf_802154_lp_timer_nodrv.c",
                     "src/platform/temperature/nrf_802154_temperature_none.c",
+                    "src/rsch/nrf_802154_rsch.c",
+                    "src/rsch/nrf_802154_rsch_crit_sect.c",
                     "src/timer_scheduler/nrf_802154_timer_sched.c",
                     "src/nrf_802154_notification_swi.c",
                     "src/nrf_802154_priority_drop_swi.c",
@@ -85,7 +88,6 @@
                     "src/nrf_802154_debug.c",
                     "src/nrf_802154_pib.c",
                     "src/nrf_802154_revision.c",
-                    "src/nrf_802154_rsch.c",
                     "src/nrf_802154_rssi.c",
                     "src/nrf_802154_rx_buffer.c",
                     "src/nrf_802154_timer_coord.c",
@@ -97,6 +99,46 @@
                     "src/platform/hp_timer/nrf_802154_hp_timer.c",
                     "src/platform/lp_timer/nrf_802154_lp_timer_nodrv.c",
                     "src/platform/temperature/nrf_802154_temperature_none.c",
+                    "src/rsch/nrf_802154_rsch.c",
+                    "src/rsch/nrf_802154_rsch_crit_sect.c",
+                    "src/timer_scheduler/nrf_802154_timer_sched.c",
+                    "src/nrf_802154_notification_swi.c",
+                    "src/nrf_802154_priority_drop_swi.c",
+                    "src/nrf_802154_request_swi.c",
+                    "src/nrf_802154_swi.c"
+                ],
+                "_links": [
+                    "!s140",
+                    "nrf52840_xxaa"
+                ],
+                "_name": "rem"
+            },
+            {
+                "_attrs": [
+                    "public"
+                ],
+                "_files": [
+                    "src/nrf_802154.c",
+                    "src/nrf_802154_ack_pending_bit.c",
+                    "src/nrf_802154_core.c",
+                    "src/nrf_802154_core_hooks.c",
+                    "src/nrf_802154_critical_section.c",
+                    "src/nrf_802154_debug.c",
+                    "src/nrf_802154_pib.c",
+                    "src/nrf_802154_revision.c",
+                    "src/nrf_802154_rssi.c",
+                    "src/nrf_802154_rx_buffer.c",
+                    "src/nrf_802154_timer_coord.c",
+                    "src/mac_features/nrf_802154_precise_ack_timeout.c",
+                    "src/mac_features/nrf_802154_csma_ca.c",
+                    "src/mac_features/nrf_802154_delayed_trx.c",
+                    "src/mac_features/nrf_802154_filter.c",
+                    "src/platform/clock/nrf_802154_clock_sdk.c",
+                    "src/platform/hp_timer/nrf_802154_hp_timer.c",
+                    "src/platform/lp_timer/nrf_802154_lp_timer_nodrv.c",
+                    "src/platform/temperature/nrf_802154_temperature_none.c",
+                    "src/rsch/nrf_802154_rsch.c",
+                    "src/rsch/nrf_802154_rsch_crit_sect.c",
                     "src/timer_scheduler/nrf_802154_timer_sched.c",
                     "src/nrf_802154_notification_direct.c",
                     "src/nrf_802154_priority_drop_direct.c",
@@ -129,6 +171,7 @@
                     "cmock\\mock_nrf_802154_request.c",
                     "cmock\\mock_nrf_802154_revision.c",
                     "cmock\\mock_nrf_802154_rsch.c",
+                    "cmock\\mock_nrf_802154_rsch_crit_sect.c",
                     "cmock\\mock_nrf_802154_rssi.c",
                     "cmock\\mock_nrf_802154_rx_buffer.c",
                     "cmock\\mock_nrf_802154_timer_coord.c"
@@ -151,13 +194,13 @@
         "_class": "nRF_drv_radio_802_15_4",
         "_description": "RAAL",
         "_headers": [
-            "src/raal/nrf_raal_api.h"
+            "src/rsch/raal/nrf_raal_api.h"
         ],
         "_links": [
             "hal"
         ],
         "_includes": [
-            "src/raal",
+            "src/rsch/raal",
             "external/softdevice/s140/headers"
         ],
         "_variants": [
@@ -169,7 +212,7 @@
                     "RAAL_SIMULATOR"
                 ],
                 "_files": [
-                    "src/raal/simulator/nrf_raal_simulator.c"
+                    "src/rsch/raal/simulator/nrf_raal_simulator.c"
                 ],
                 "_name": "simulator"
             },
@@ -181,9 +224,21 @@
                     "RAAL_SINGLE_PHY"
                 ],
                 "_files": [
-                    "src/raal/single_phy/single_phy.c"
+                    "src/rsch/raal/single_phy/single_phy.c"
                 ],
                 "_name": "single_phy"
+            },
+            {
+                "_attrs": [
+                    "public"
+                ],
+                "_defines": [
+                    "RAAL_REM"
+                ],
+                "_links": [
+                    "mpsl"
+                ],
+                "_name": "rem"
             },
             {
                 "_attrs": [
@@ -193,10 +248,10 @@
                     "RAAL_SOFTDEVICE"
                 ],
                 "_files": [
-                    "src/raal/softdevice/nrf_raal_softdevice.c"
+                    "src/rsch/raal/softdevice/nrf_raal_softdevice.c"
                 ],
                 "_includes": [
-                    "src/raal/softdevice"
+                    "src/rsch/raal/softdevice"
                 ],
                 "_links": [
                     "nrf_drivers",

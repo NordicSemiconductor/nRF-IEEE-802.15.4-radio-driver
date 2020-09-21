@@ -584,8 +584,24 @@ void test_OnCrcOkEventStateRx_ShallNotifyReceivedFrameIfFrameFilteringFailsInPro
     ack_requested_set();
     frame_type_ack_set();
 
-
     nrf_802154_filter_frame_part_ExpectAndReturn(m_test_radio_buffer.psdu, NULL, NRF_802154_RX_ERROR_INVALID_FRAME);
+    nrf_802154_filter_frame_part_IgnoreArg_p_num_bytes();
+
+    nrf_802154_pib_promiscuous_get_ExpectAndReturn(true);
+
+    mock_ack_not_requested(false);
+
+    mock_received_frame_notify();
+
+    irq_crcok_state_rx();
+}
+
+void test_OnCrcOkEventStateRx_ShallNotifyReceivedFrameIfFrameLengthIsInvalidInPromiscuousMode(void)
+{
+    ack_requested_set();
+    frame_type_ack_set();
+
+    nrf_802154_filter_frame_part_ExpectAndReturn(m_test_radio_buffer.psdu, NULL, NRF_802154_RX_ERROR_INVALID_LENGTH);
     nrf_802154_filter_frame_part_IgnoreArg_p_num_bytes();
 
     nrf_802154_pib_promiscuous_get_ExpectAndReturn(true);
