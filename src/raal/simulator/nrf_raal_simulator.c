@@ -44,19 +44,17 @@
 
 #include "nrf.h"
 #include "nrf_802154_debug.h"
-#include "platform/clock/nrf_802154_clock.h"
 
 static bool m_continuous_requested;
 static bool m_continuous_granted;
-static bool m_critical_section;
-static enum {
-    PENDING_EVENT_NONE,
-    PENDING_EVENT_STARTED,
-    PENDING_EVENT_ENDED,
-} m_pending_event;
+
 static uint16_t m_time_interval               = 250; // ms
 static uint16_t m_ble_duty                    = 10;  // ms
 static uint16_t m_pre_preemption_notification = 150; // us
+
+static uint32_t m_ended_timestamp;
+static uint32_t m_started_timestamp;
+static uint32_t m_margin_timestamp;
 
 static void continuous_grant(void)
 {
@@ -78,8 +76,17 @@ static void continuous_revoke(void)
     }
 }
 
+static uint32_t time_get(void)
+{
+    NRF_TIMER0->TASKS_CAPTURE[1] = 1;
+    return NRF_TIMER0->CC[1];
+}
+
 void nrf_raal_init(void)
 {
+    m_ended_timestamp   = m_time_interval * 1000UL;
+    m_started_timestamp = m_ble_duty * 1000UL;
+    m_margin_timestamp  = (m_time_interval * 1000UL) - m_pre_preemption_notification;
 
     NRF_MWU->PREGION[0].SUBS = 0x00000002;
     NRF_MWU->INTENSET        = MWU_INTENSET_PREGION0WA_Msk | MWU_INTENSET_PREGION0RA_Msk;
@@ -91,12 +98,8 @@ void nrf_raal_init(void)
     NRF_TIMER0->MODE       = TIMER_MODE_MODE_Timer;
     NRF_TIMER0->BITMODE    = TIMER_BITMODE_BITMODE_24Bit;
     NRF_TIMER0->PRESCALER  = 4;
-    NRF_TIMER0->INTENSET   = TIMER_INTENSET_COMPARE0_Msk |
-                             TIMER_INTENSET_COMPARE1_Msk |
-                             TIMER_INTENSET_COMPARE2_Msk;
-    NRF_TIMER0->CC[0]      = m_time_interval * 1000UL;
-    NRF_TIMER0->CC[1]      = m_ble_duty * 1000UL;
-    NRF_TIMER0->CC[2]      = (m_time_interval * 1000UL) - m_pre_preemption_notification;
+    NRF_TIMER0->INTENSET   = TIMER_INTENSET_COMPARE0_Msk;
+    NRF_TIMER0->CC[0]      = m_started_timestamp;
 
     NVIC_SetPriority(TIMER0_IRQn, 1);
     NVIC_ClearPendingIRQ(TIMER0_IRQn);
@@ -114,14 +117,26 @@ void nrf_raal_uninit(void)
 
 void nrf_raal_continuous_mode_enter(void)
 {
+    uint32_t time;
+
     nrf_802154_log(EVENT_TRACE_ENTER, FUNCTION_RAAL_CONTINUOUS_ENTER);
 
     assert(!m_continuous_requested);
 
     m_continuous_requested = true;
-    m_pending_event = PENDING_EVENT_NONE;
 
-    nrf_802154_clock_hfclk_start();
+    NVIC_DisableIRQ(TIMER0_IRQn);
+    __DSB();
+    __ISB();
+
+    time = time_get();
+
+    if ((time >= m_started_timestamp) && (time < m_margin_timestamp))
+    {
+        continuous_grant();
+    }
+
+    NVIC_EnableIRQ(TIMER0_IRQn);
 
     nrf_802154_log(EVENT_TRACE_EXIT, FUNCTION_RAAL_CONTINUOUS_ENTER);
 }
@@ -135,53 +150,9 @@ void nrf_raal_continuous_mode_exit(void)
     m_continuous_requested = false;
     m_continuous_granted   = false;
 
-    nrf_802154_clock_hfclk_stop();
-
     nrf_802154_pin_clr(PIN_DBG_TIMESLOT_ACTIVE);
 
     nrf_802154_log(EVENT_TRACE_EXIT, FUNCTION_RAAL_CONTINUOUS_EXIT);
-}
-
-void nrf_raal_critical_section_enter(void)
-{
-    nrf_802154_log(EVENT_TRACE_ENTER, FUNCTION_RAAL_CRIT_SECT_ENTER);
-
-    m_critical_section = true;
-    nrf_802154_pin_set(PIN_DBG_RAAL_CRITICAL_SECTION);
-
-    nrf_802154_log(EVENT_TRACE_EXIT, FUNCTION_RAAL_CRIT_SECT_ENTER);
-}
-
-void nrf_raal_critical_section_exit(void)
-{
-    NVIC_DisableIRQ(TIMER0_IRQn);
-    __DSB();
-    __ISB();
-
-    nrf_802154_log(EVENT_TRACE_ENTER, FUNCTION_RAAL_CRIT_SECT_EXIT);
-
-    m_critical_section = false;
-
-    switch (m_pending_event)
-    {
-    case PENDING_EVENT_STARTED:
-        continuous_grant();
-        break;
-
-    case PENDING_EVENT_ENDED:
-        continuous_revoke();
-        break;
-
-    default:
-        break;
-    }
-
-    m_pending_event = PENDING_EVENT_NONE;
-
-    nrf_802154_pin_clr(PIN_DBG_RAAL_CRITICAL_SECTION);
-    nrf_802154_log(EVENT_TRACE_EXIT, FUNCTION_RAAL_CRIT_SECT_EXIT);
-
-    NVIC_EnableIRQ(TIMER0_IRQn);
 }
 
 bool nrf_raal_timeslot_request(uint32_t length_us)
@@ -195,105 +166,75 @@ bool nrf_raal_timeslot_request(uint32_t length_us)
         return false;
     }
 
-    NRF_TIMER0->TASKS_CAPTURE[3] = 1;
-    timer = NRF_TIMER0->CC[3];
+    timer = time_get();
 
-    return timer >= NRF_TIMER0->CC[1] && timer + length_us < NRF_TIMER0->CC[2];
-}
-
-bool nrf_raal_timeslot_is_granted(void)
-{
-    return m_continuous_granted;
+    return (timer >= m_started_timestamp) && ((timer + length_us) < m_margin_timestamp);
 }
 
 uint32_t nrf_raal_timeslot_us_left_get(void)
 {
-    uint32_t timer;
-    uint32_t timeslot_start = NRF_TIMER0->CC[1];
-    uint32_t timeslot_end   = NRF_TIMER0->CC[2];
+    uint32_t timer = time_get();
 
-    NRF_TIMER0->TASKS_CAPTURE[3] = 1;
-    timer = NRF_TIMER0->CC[3];
-
-    return timer >= timeslot_start && timer < timeslot_end ? timeslot_end - timer : 0;
-}
-
-void nrf_802154_clock_hfclk_ready(void)
-{
-    // Just wait for next timeslot to report that timeslot is ready.
-    // It is hard to report start of timeslot from this context due to races (i.e. different
-    // priorities of TIMER0, CLOCK, RADIO).
+    return ((timer >= m_started_timestamp) && (timer < m_margin_timestamp)) ?
+           (m_margin_timestamp - timer) : 0;
 }
 
 void TIMER0_IRQHandler(void)
 {
+    uint32_t ev_timestamp;
+
     nrf_802154_log(EVENT_TRACE_ENTER, FUNCTION_RAAL_SIG_HANDLER);
-
-    if (NRF_TIMER0->EVENTS_COMPARE[1])
-    {
-        NRF_TIMER0->EVENTS_COMPARE[1] = 0;
-
-        nrf_802154_log(EVENT_TRACE_ENTER, FUNCTION_RAAL_SIG_EVENT_START);
-
-        NRF_MWU->REGIONENCLR = MWU_REGIONENCLR_PRGN0WA_Msk | MWU_REGIONENCLR_PRGN0RA_Msk;
-
-        if (m_critical_section)
-        {
-            if (m_pending_event == PENDING_EVENT_ENDED)
-            {
-                m_pending_event = PENDING_EVENT_NONE;
-            }
-            else
-            {
-                m_pending_event = PENDING_EVENT_STARTED;
-            }
-        }
-        else
-        {
-            continuous_grant();
-        }
-
-        nrf_802154_log(EVENT_TRACE_EXIT, FUNCTION_RAAL_SIG_EVENT_START);
-    }
-
-    if (NRF_TIMER0->EVENTS_COMPARE[2])
-    {
-        NRF_TIMER0->EVENTS_COMPARE[2] = 0;
-
-        nrf_802154_log(EVENT_TRACE_ENTER, FUNCTION_RAAL_SIG_EVENT_MARGIN);
-
-        if (m_critical_section)
-        {
-            if (m_pending_event == PENDING_EVENT_STARTED)
-            {
-                m_pending_event = PENDING_EVENT_NONE;
-            }
-            else
-            {
-                m_pending_event = PENDING_EVENT_ENDED;
-            }
-        }
-        else
-        {
-            continuous_revoke();
-        }
-
-        nrf_802154_log(EVENT_TRACE_EXIT, FUNCTION_RAAL_SIG_EVENT_MARGIN);
-    }
 
     if (NRF_TIMER0->EVENTS_COMPARE[0])
     {
-        NRF_TIMER0->EVENTS_COMPARE[0] = 0;
+        while (time_get() >= NRF_TIMER0->CC[0])
+        {
+            NRF_TIMER0->EVENTS_COMPARE[0] = 0;
 
-        nrf_802154_log(EVENT_TRACE_ENTER, FUNCTION_RAAL_SIG_EVENT_ENDED);
+            ev_timestamp = NRF_TIMER0->CC[0];
 
-        NRF_MWU->REGIONENSET = MWU_REGIONENSET_PRGN0WA_Msk | MWU_REGIONENSET_PRGN0RA_Msk;
+            if (ev_timestamp == m_ended_timestamp)
+            {
+                nrf_802154_log(EVENT_TRACE_ENTER, FUNCTION_RAAL_SIG_EVENT_ENDED);
 
-        NRF_TIMER0->TASKS_STOP  = 1;
-        NRF_TIMER0->TASKS_CLEAR = 1;
-        NRF_TIMER0->TASKS_START = 1;
+                NRF_MWU->REGIONENSET = MWU_REGIONENSET_PRGN0WA_Msk | MWU_REGIONENSET_PRGN0RA_Msk;
 
-        nrf_802154_log(EVENT_TRACE_EXIT, FUNCTION_RAAL_SIG_EVENT_ENDED);
+                NRF_TIMER0->TASKS_STOP  = 1;
+                NRF_TIMER0->TASKS_CLEAR = 1;
+
+                NRF_TIMER0->CC[0] = m_started_timestamp;
+
+                NRF_TIMER0->TASKS_START = 1;
+
+                nrf_802154_log(EVENT_TRACE_EXIT, FUNCTION_RAAL_SIG_EVENT_ENDED);
+            }
+            else if (ev_timestamp == m_started_timestamp)
+            {
+                nrf_802154_log(EVENT_TRACE_ENTER, FUNCTION_RAAL_SIG_EVENT_START);
+
+                NRF_MWU->REGIONENCLR = MWU_REGIONENCLR_PRGN0WA_Msk | MWU_REGIONENCLR_PRGN0RA_Msk;
+
+                NRF_TIMER0->CC[0] = m_margin_timestamp;
+
+                continuous_grant();
+
+                nrf_802154_log(EVENT_TRACE_EXIT, FUNCTION_RAAL_SIG_EVENT_START);
+            }
+            else if (ev_timestamp == m_margin_timestamp)
+            {
+                nrf_802154_log(EVENT_TRACE_ENTER, FUNCTION_RAAL_SIG_EVENT_MARGIN);
+
+                NRF_TIMER0->CC[0] = m_ended_timestamp;
+
+                continuous_revoke();
+
+                nrf_802154_log(EVENT_TRACE_EXIT, FUNCTION_RAAL_SIG_EVENT_MARGIN);
+            }
+            else
+            {
+                assert(false);
+            }
+        }
     }
 
     nrf_802154_log(EVENT_TRACE_EXIT, FUNCTION_RAAL_SIG_HANDLER);

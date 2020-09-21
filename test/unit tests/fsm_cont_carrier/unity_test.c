@@ -44,9 +44,9 @@
 #include "mock_nrf_802154_priority_drop.h"
 #include "mock_nrf_802154_procedures_duration.h"
 #include "mock_nrf_802154_revision.h"
+#include "mock_nrf_802154_rsch.h"
 #include "mock_nrf_802154_rx_buffer.h"
 #include "mock_nrf_fem_control_api.h"
-#include "mock_nrf_raal_api.h"
 #include "mock_nrf_radio.h"
 #include "mock_nrf_timer.h"
 #include "mock_nrf_egu.h"
@@ -90,7 +90,7 @@ void nrf_802154_tx_ack_started(void){}
 
 void test_continuous_carrier_begin_ShallDoNothingIfOutOfTimeslot(void)
 {
-    m_timeslot_is_granted = false;
+    m_rsch_timeslot_is_granted = false;
 
     continuous_carrier_init(true);
 }
@@ -102,6 +102,8 @@ static void verify_continuous_carrier_begin_periph_setup(void)
     uint32_t event_addr;
     uint32_t task_addr;
     uint32_t fork_addr;
+
+    m_rsch_timeslot_is_granted = true;
 
     nrf_fem_control_ppi_enable_Expect(NRF_FEM_CONTROL_PA_PIN, NRF_TIMER_CC_CHANNEL2);
     nrf_fem_control_timer_set_Expect(NRF_FEM_CONTROL_PA_PIN, NRF_TIMER_CC_CHANNEL2, NRF_TIMER_SHORT_COMPARE2_STOP_MASK);
@@ -129,8 +131,6 @@ static void verify_continuous_carrier_begin_periph_setup(void)
 
 void test_continuous_carrier_begin_ShallPrepareHardwareToTransmitCarrier(void)
 {
-    m_timeslot_is_granted = true;
-
     verify_continuous_carrier_begin_periph_setup();
 
     nrf_radio_task_trigger_Expect(NRF_RADIO_TASK_DISABLE);
@@ -142,8 +142,6 @@ void test_continuous_carrier_begin_ShallPrepareHardwareToTransmitCarrier(void)
 
 void test_continuous_carrier_begin_ShallTriggerDisableIfRequestedByArgument(void)
 {
-    m_timeslot_is_granted = true;
-
     verify_continuous_carrier_begin_periph_setup();
 
     nrf_radio_task_trigger_Expect(NRF_RADIO_TASK_DISABLE);
@@ -153,8 +151,6 @@ void test_continuous_carrier_begin_ShallTriggerDisableIfRequestedByArgument(void
 
 void test_continuous_carrier_begin_ShallNotTriggerDisableIfRadioIsRampingDown(void)
 {
-    m_timeslot_is_granted = true;
-
     verify_continuous_carrier_begin_periph_setup();
 
     nrf_radio_state_get_ExpectAndReturn(NRF_RADIO_STATE_RX_DISABLE);
@@ -164,8 +160,6 @@ void test_continuous_carrier_begin_ShallNotTriggerDisableIfRadioIsRampingDown(vo
 
 void test_continuous_carrier_begin_ShallNotTriggerDisableIfEguEventIsSet(void)
 {
-    m_timeslot_is_granted = true;
-
     verify_continuous_carrier_begin_periph_setup();
 
     nrf_radio_state_get_ExpectAndReturn(NRF_RADIO_STATE_DISABLED);
@@ -176,8 +170,6 @@ void test_continuous_carrier_begin_ShallNotTriggerDisableIfEguEventIsSet(void)
 
 void test_continuous_carrier_begin_ShallTriggerDisableIfRadioIsDisabledAndEguDidNotWork(void)
 {
-    m_timeslot_is_granted = true;
-
     verify_continuous_carrier_begin_periph_setup();
 
     nrf_radio_state_get_ExpectAndReturn(NRF_RADIO_STATE_DISABLED);
@@ -193,28 +185,28 @@ void test_continuous_carrier_begin_ShallTriggerDisableIfRadioIsDisabledAndEguDid
 
 void test_continuous_carrier_terminate_ShallDoNothingOutOfTimeslot(void)
 {
-    m_timeslot_is_granted = false;
-
     nrf_ppi_channel_disable_Expect(PPI_DISABLED_EGU);
     nrf_ppi_channel_disable_Expect(PPI_EGU_RAMP_UP);
 
     nrf_fem_control_ppi_disable_Expect(NRF_FEM_CONTROL_PA_PIN);
     nrf_fem_control_timer_reset_Expect(NRF_FEM_CONTROL_PA_PIN, NRF_TIMER_SHORT_COMPARE2_STOP_MASK);
     nrf_fem_control_ppi_fork_clear_Expect(NRF_FEM_CONTROL_PA_PIN, PPI_EGU_RAMP_UP);
+
+    m_rsch_timeslot_is_granted = false;
 
     continuous_carrier_terminate();
 }
 
 void test_continuous_carrier_terminate_ShallResetPeriphAndTriggerDisableTask(void)
 {
-    m_timeslot_is_granted = true;
-
     nrf_ppi_channel_disable_Expect(PPI_DISABLED_EGU);
     nrf_ppi_channel_disable_Expect(PPI_EGU_RAMP_UP);
 
     nrf_fem_control_ppi_disable_Expect(NRF_FEM_CONTROL_PA_PIN);
     nrf_fem_control_timer_reset_Expect(NRF_FEM_CONTROL_PA_PIN, NRF_TIMER_SHORT_COMPARE2_STOP_MASK);
     nrf_fem_control_ppi_fork_clear_Expect(NRF_FEM_CONTROL_PA_PIN, PPI_EGU_RAMP_UP);
+
+    m_rsch_timeslot_is_granted = true;
 
     nrf_radio_task_trigger_Expect(NRF_RADIO_TASK_DISABLE);
 
