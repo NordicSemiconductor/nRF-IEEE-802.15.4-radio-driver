@@ -493,12 +493,11 @@ void test_crcok_handler_ShallFilterFrame(void)
 
 // ACK requested
 
-static void crcok_ack_periph_set_verify(void)
+static void crcok_ack_periph_set_verify(uint32_t time_to_pa)
 {
     uint8_t * p_ack = (uint8_t *)rand();
     uint32_t  event_addr;
     uint32_t  task_addr;
-    uint32_t  time_to_pa;
 
     nrf_802154_frame_parser_ar_bit_is_set_ExpectAndReturn(m_buffer.data, true);
 
@@ -529,9 +528,12 @@ void test_crcok_handler_ShallPreparePeriphsToTransmitAckIfRequested(void)
     uint8_t * p_ack = (uint8_t *)rand();
     uint32_t  event_addr;
     uint32_t  task_addr;
-    uint32_t  timer_cc1;
+    uint32_t  timer_cc0;
     uint32_t  timer_cc3;
     uint32_t  time_to_pa = rand();
+
+    time_to_pa = (time_to_pa > 2) ? time_to_pa : 2; // Time to ramp up must be greater than 0
+    time_to_pa = (time_to_pa < UINT32_MAX) ? time_to_pa : UINT32_MAX - 1; // Time to ramp up must be lower than max
 
     insert_frame_with_ack_request_to_buffer();
 
@@ -559,11 +561,11 @@ void test_crcok_handler_ShallPreparePeriphsToTransmitAckIfRequested(void)
 
     nrf_802154_fal_pa_configuration_set_IgnoreAndReturn(NRF_SUCCESS);
 
-    timer_cc1 = rand();
-    timer_cc3 = timer_cc1 - 1;
+    timer_cc0 = time_to_pa + 1;
+    timer_cc3 = time_to_pa - 2;
     nrf_timer_task_trigger_Expect(NRF_802154_TIMER_INSTANCE, NRF_TIMER_TASK_CAPTURE3);
     nrf_timer_cc_read_ExpectAndReturn(NRF_802154_TIMER_INSTANCE, NRF_TIMER_CC_CHANNEL3, timer_cc3);
-    nrf_timer_cc_read_ExpectAndReturn(NRF_802154_TIMER_INSTANCE, NRF_TIMER_CC_CHANNEL1, timer_cc1);
+    nrf_timer_cc_read_ExpectAndReturn(NRF_802154_TIMER_INSTANCE, NRF_TIMER_CC_CHANNEL0, timer_cc0);
 
     nrf_radio_int_disable_Expect(NRF_RADIO_INT_CRCERROR_MASK |
                                  NRF_RADIO_INT_BCMATCH_MASK  |
@@ -580,18 +582,22 @@ void test_crcok_handler_ShallPreparePeriphsToTransmitAckIfRequested(void)
 
 void test_crcok_handler_ShallWaitForPhyendEventIfTimerIsTicking(void)
 {
-    uint32_t timer_cc1;
+    uint32_t timer_cc0;
     uint32_t timer_cc3;
+    uint32_t time_to_pa = rand();
+
+    time_to_pa = (time_to_pa > 0) ? time_to_pa : 1; // Time to ramp up must be greater than 0
+    time_to_pa = (time_to_pa < UINT32_MAX) ? time_to_pa : UINT32_MAX - 1; // Time to ramp up must be lower than max
 
     insert_frame_with_ack_request_to_buffer();
 
-    crcok_ack_periph_set_verify();
+    crcok_ack_periph_set_verify(time_to_pa);
 
-    timer_cc1 = rand();
-    timer_cc3 = timer_cc1 - 1;
+    timer_cc0 = time_to_pa + 1;
+    timer_cc3 = time_to_pa - 1;
     nrf_timer_task_trigger_Expect(NRF_802154_TIMER_INSTANCE, NRF_TIMER_TASK_CAPTURE3);
     nrf_timer_cc_read_ExpectAndReturn(NRF_802154_TIMER_INSTANCE, NRF_TIMER_CC_CHANNEL3, timer_cc3);
-    nrf_timer_cc_read_ExpectAndReturn(NRF_802154_TIMER_INSTANCE, NRF_TIMER_CC_CHANNEL1, timer_cc1);
+    nrf_timer_cc_read_ExpectAndReturn(NRF_802154_TIMER_INSTANCE, NRF_TIMER_CC_CHANNEL0, timer_cc0);
 
     nrf_radio_int_disable_Expect(NRF_RADIO_INT_CRCERROR_MASK |
                                  NRF_RADIO_INT_BCMATCH_MASK  |
@@ -606,18 +612,22 @@ void test_crcok_handler_ShallWaitForPhyendEventIfTimerIsTicking(void)
 
 void test_crcok_handler_ShallWaitForPhyendEventIfTransmitterIsRampingUp(void)
 {
-    uint32_t timer_cc1;
+    uint32_t timer_cc0;
     uint32_t timer_cc3;
+    uint32_t time_to_pa = rand();
+
+    time_to_pa = (time_to_pa > 0) ? time_to_pa : 1; // Time to ramp up must be greater than 0
+    time_to_pa = (time_to_pa < UINT32_MAX) ? time_to_pa : UINT32_MAX - 1; // Time to ramp up must be lower than max
 
     insert_frame_with_ack_request_to_buffer();
 
-    crcok_ack_periph_set_verify();
+    crcok_ack_periph_set_verify(time_to_pa);
 
-    timer_cc1 = rand();
-    timer_cc3 = timer_cc1;
+    timer_cc0 = time_to_pa + 1;
+    timer_cc3 = timer_cc0;
     nrf_timer_task_trigger_Expect(NRF_802154_TIMER_INSTANCE, NRF_TIMER_TASK_CAPTURE3);
     nrf_timer_cc_read_ExpectAndReturn(NRF_802154_TIMER_INSTANCE, NRF_TIMER_CC_CHANNEL3, timer_cc3);
-    nrf_timer_cc_read_ExpectAndReturn(NRF_802154_TIMER_INSTANCE, NRF_TIMER_CC_CHANNEL1, timer_cc1);
+    nrf_timer_cc_read_ExpectAndReturn(NRF_802154_TIMER_INSTANCE, NRF_TIMER_CC_CHANNEL0, timer_cc0);
 
     nrf_radio_state_get_ExpectAndReturn(NRF_RADIO_STATE_TXRU);
 
@@ -634,18 +644,22 @@ void test_crcok_handler_ShallWaitForPhyendEventIfTransmitterIsRampingUp(void)
 
 void test_crcok_handler_ShallWaitForPhyendEventIfTransmitterEndedRampingUp(void)
 {
-    uint32_t timer_cc1;
+    uint32_t timer_cc0;
     uint32_t timer_cc3;
+    uint32_t time_to_pa = rand();
+
+    time_to_pa = (time_to_pa > 0) ? time_to_pa : 1; // Time to ramp up must be greater than 0
+    time_to_pa = (time_to_pa < UINT32_MAX) ? time_to_pa : UINT32_MAX - 1; // Time to ramp up must be lower than max
 
     insert_frame_with_ack_request_to_buffer();
 
-    crcok_ack_periph_set_verify();
+    crcok_ack_periph_set_verify(time_to_pa);
 
-    timer_cc1 = rand();
-    timer_cc3 = timer_cc1;
+    timer_cc0 = time_to_pa + 1;
+    timer_cc3 = timer_cc0;
     nrf_timer_task_trigger_Expect(NRF_802154_TIMER_INSTANCE, NRF_TIMER_TASK_CAPTURE3);
     nrf_timer_cc_read_ExpectAndReturn(NRF_802154_TIMER_INSTANCE, NRF_TIMER_CC_CHANNEL3, timer_cc3);
-    nrf_timer_cc_read_ExpectAndReturn(NRF_802154_TIMER_INSTANCE, NRF_TIMER_CC_CHANNEL1, timer_cc1);
+    nrf_timer_cc_read_ExpectAndReturn(NRF_802154_TIMER_INSTANCE, NRF_TIMER_CC_CHANNEL0, timer_cc0);
     nrf_radio_state_get_ExpectAndReturn(NRF_RADIO_STATE_TX);
 
     nrf_radio_event_check_ExpectAndReturn(NRF_RADIO_EVENT_TXREADY, true);
@@ -663,23 +677,29 @@ void test_crcok_handler_ShallWaitForPhyendEventIfTransmitterEndedRampingUp(void)
 
 void test_crcok_handler_ShallNotifyReceivedFrameAndStartRxIfTransmitterDidNotRampUp(void)
 {
-    uint32_t timer_cc1;
+    uint32_t timer_cc0;
     uint32_t timer_cc3;
+    uint32_t time_to_pa = rand();
+
+    time_to_pa = (time_to_pa > 0) ? time_to_pa : 1; // Time to ramp up must be greater than 0
+    time_to_pa = (time_to_pa < UINT32_MAX) ? time_to_pa : UINT32_MAX - 1; // Time to ramp up must be lower than max
 
     insert_frame_with_ack_request_to_buffer();
     m_buffer.free = false;
 
-    crcok_ack_periph_set_verify();
+    crcok_ack_periph_set_verify(time_to_pa);
 
-    timer_cc1 = rand();
-    timer_cc3 = timer_cc1;
+    timer_cc0 = time_to_pa + 1;
+    timer_cc3 = timer_cc0;
     nrf_timer_task_trigger_Expect(NRF_802154_TIMER_INSTANCE, NRF_TIMER_TASK_CAPTURE3);
     nrf_timer_cc_read_ExpectAndReturn(NRF_802154_TIMER_INSTANCE, NRF_TIMER_CC_CHANNEL3, timer_cc3);
-    nrf_timer_cc_read_ExpectAndReturn(NRF_802154_TIMER_INSTANCE, NRF_TIMER_CC_CHANNEL1, timer_cc1);
+    nrf_timer_cc_read_ExpectAndReturn(NRF_802154_TIMER_INSTANCE, NRF_TIMER_CC_CHANNEL0, timer_cc0);
     nrf_radio_state_get_ExpectAndReturn(NRF_RADIO_STATE_TX);
     nrf_radio_event_check_ExpectAndReturn(NRF_RADIO_EVENT_TXREADY, false);
 
     nrf_ppi_channel_disable_Expect(PPI_TIMER_TX_ACK);
+    nrf_ppi_channel_endpoint_setup_Expect(PPI_TIMER_TX_ACK, 0, 0);
+    nrf_ppi_fork_endpoint_setup_Expect(PPI_TIMER_TX_ACK, 0);
 
     rx_terminate_periph_reset_verify(true);
 
@@ -874,6 +894,8 @@ static void verify_phyend_tx_ack_periph_reset(void)
     nrf_timer_task_trigger_Expect(NRF_802154_TIMER_INSTANCE, NRF_TIMER_TASK_SHUTDOWN);
 
     nrf_ppi_channel_disable_Expect(PPI_TIMER_TX_ACK);
+    nrf_ppi_channel_endpoint_setup_Expect(PPI_TIMER_TX_ACK, 0, 0);
+    nrf_ppi_fork_endpoint_setup_Expect(PPI_TIMER_TX_ACK, 0);
     nrf_ppi_channel_enable_Expect(PPI_EGU_RAMP_UP);
 
     nrf_egu_event_clear_Expect(NRF_802154_SWI_EGU_INSTANCE, EGU_EVENT);
@@ -916,6 +938,8 @@ void test_phyend_handler_ShallResetPeripheralsForRxStateAndNotfiThatFrameWasRece
     nrf_timer_task_trigger_Expect(NRF_802154_TIMER_INSTANCE, NRF_TIMER_TASK_SHUTDOWN);
 
     nrf_ppi_channel_disable_Expect(PPI_TIMER_TX_ACK);
+    nrf_ppi_channel_endpoint_setup_Expect(PPI_TIMER_TX_ACK, 0, 0);
+    nrf_ppi_fork_endpoint_setup_Expect(PPI_TIMER_TX_ACK, 0);
     nrf_ppi_channel_enable_Expect(PPI_EGU_RAMP_UP);
 
     nrf_egu_event_clear_Expect(NRF_802154_SWI_EGU_INSTANCE, EGU_EVENT);

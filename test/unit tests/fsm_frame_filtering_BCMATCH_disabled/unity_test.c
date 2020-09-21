@@ -170,6 +170,8 @@ static void mock_rx_terminate(void)
     nrf_ppi_channel_disable_Expect(PPI_CRCOK_DIS_PPI);
     nrf_ppi_channel_disable_Expect(PPI_ADDRESS_COUNTER_COUNT);
     nrf_ppi_channel_disable_Expect(PPI_CRCERROR_COUNTER_CLEAR);
+    nrf_ppi_channel_endpoint_setup_Expect(PPI_CRCERROR_CLEAR, 0, 0);
+    nrf_ppi_fork_endpoint_setup_Expect(PPI_CRCERROR_CLEAR, 0);
 
     nrf_802154_fal_lna_configuration_clear_ExpectAndReturn(&m_activate_rx_cc0, NULL, NRF_SUCCESS);
     nrf_timer_task_trigger_Expect(NRF_802154_TIMER_INSTANCE, NRF_TIMER_TASK_SHUTDOWN);
@@ -312,6 +314,9 @@ static void mock_ack_requested(void)
     uint32_t  event_addr;
     uint32_t  time_to_pa = rand();
 
+    time_to_pa = (time_to_pa > 0) ? time_to_pa : 1; // Time to ramp up must be greater than 0
+    time_to_pa = (time_to_pa < UINT32_MAX) ? time_to_pa : UINT32_MAX - 1; // Time to ramp up must be lower than max
+
     nrf_802154_ack_generator_create_ExpectAndReturn(m_test_radio_buffer.data, p_ack);
     nrf_radio_packetptr_set_Expect(p_ack);
     nrf_radio_shorts_set_Expect(NRF_RADIO_SHORT_TXREADY_START_MASK |
@@ -335,8 +340,8 @@ static void mock_ack_requested(void)
 
     nrf_timer_task_trigger_Expect(NRF_802154_TIMER_INSTANCE, NRF_TIMER_TASK_CAPTURE3);
 
-    nrf_timer_cc_read_ExpectAndReturn(NRF_802154_TIMER_INSTANCE, NRF_TIMER_CC_CHANNEL3, 1);
-    nrf_timer_cc_read_ExpectAndReturn(NRF_802154_TIMER_INSTANCE, NRF_TIMER_CC_CHANNEL1, 2);
+    nrf_timer_cc_read_ExpectAndReturn(NRF_802154_TIMER_INSTANCE, NRF_TIMER_CC_CHANNEL3, time_to_pa - 1);
+    nrf_timer_cc_read_ExpectAndReturn(NRF_802154_TIMER_INSTANCE, NRF_TIMER_CC_CHANNEL0, time_to_pa + 1);
 
     nrf_radio_int_disable_Expect(NRF_RADIO_INT_CRCOK_MASK | NRF_RADIO_INT_CRCERROR_MASK);
     nrf_radio_event_clear_Expect(NRF_RADIO_EVENT_PHYEND);

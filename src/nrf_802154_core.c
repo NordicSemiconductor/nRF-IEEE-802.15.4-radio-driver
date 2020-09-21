@@ -174,36 +174,44 @@ static volatile radio_state_t m_state; ///< State of the radio driver.
 
 /// Common parameters for the FAL handling.
 static const nrf_802154_fal_event_t m_deactivate_on_disable =
-{.type         = NRF_802154_FAL_EVENT_TYPE_GENERIC,
- .override_ppi =
-     false,
- .event.generic.register_address =
-     ((uint32_t)NRF_RADIO_BASE + (uint32_t)NRF_RADIO_EVENT_DISABLED)};
+{
+    .type                           = NRF_802154_FAL_EVENT_TYPE_GENERIC,
+    .override_ppi                   = false,
+    .event.generic.register_address =
+        ((uint32_t)NRF_RADIO_BASE + (uint32_t)NRF_RADIO_EVENT_DISABLED)
+};
 
 static const nrf_802154_fal_event_t m_activate_rx_cc0 =
-{.type                         = NRF_802154_FAL_EVENT_TYPE_TIMER,
- .override_ppi                 = false,
- .event.timer.p_timer_instance =
-     NRF_802154_TIMER_INSTANCE,
- .event.timer.compare_channel_mask = ((1 << NRF_TIMER_CC_CHANNEL0) | (1 << NRF_TIMER_CC_CHANNEL2)),
- .event.timer.counter_value        =
-     RX_RAMP_UP_TIME};
+{
+    .type         = NRF_802154_FAL_EVENT_TYPE_TIMER,
+    .override_ppi = false,
+    .event.timer  =
+    {
+        .p_timer_instance     = NRF_802154_TIMER_INSTANCE,
+        .counter_value        = RX_RAMP_UP_TIME,
+        .compare_channel_mask = ((1 << NRF_TIMER_CC_CHANNEL0) | (1 << NRF_TIMER_CC_CHANNEL2)),
+    },
+};
 
 static const nrf_802154_fal_event_t m_activate_tx_cc0 =
-{.type                         = NRF_802154_FAL_EVENT_TYPE_TIMER,
- .override_ppi                 = false,
- .event.timer.p_timer_instance =
-     NRF_802154_TIMER_INSTANCE,
- .event.timer.compare_channel_mask = ((1 << NRF_TIMER_CC_CHANNEL0) | (1 << NRF_TIMER_CC_CHANNEL2)),
- .event.timer.counter_value        =
-     TX_RAMP_UP_TIME};
+{
+    .type         = NRF_802154_FAL_EVENT_TYPE_TIMER,
+    .override_ppi = false,
+    .event.timer  =
+    {
+        .p_timer_instance     = NRF_802154_TIMER_INSTANCE,
+        .counter_value        = TX_RAMP_UP_TIME,
+        .compare_channel_mask = ((1 << NRF_TIMER_CC_CHANNEL0) | (1 << NRF_TIMER_CC_CHANNEL2)),
+    },
+};
 
 static const nrf_802154_fal_event_t m_ccaidle =
-{.type                           = NRF_802154_FAL_EVENT_TYPE_GENERIC,
- .override_ppi                   = true,
- .ppi_ch_id                      = PPI_CCAIDLE_FEM,
- .event.generic.register_address =
-     ((uint32_t)NRF_RADIO_BASE + (uint32_t)NRF_RADIO_EVENT_CCAIDLE)};
+{
+    .type                           = NRF_802154_FAL_EVENT_TYPE_GENERIC,
+    .override_ppi                   = true,
+    .ppi_ch_id                      = PPI_CCAIDLE_FEM,
+    .event.generic.register_address = ((uint32_t)NRF_RADIO_BASE + (uint32_t)NRF_RADIO_EVENT_CCAIDLE)
+};
 
 typedef struct
 {
@@ -630,7 +638,7 @@ static void irq_deinit(void)
 static void nrf_timer_init(void)
 {
     nrf_timer_mode_set(NRF_802154_TIMER_INSTANCE, NRF_TIMER_MODE_TIMER);
-    nrf_timer_bit_width_set(NRF_802154_TIMER_INSTANCE, NRF_TIMER_BIT_WIDTH_16);
+    nrf_timer_bit_width_set(NRF_802154_TIMER_INSTANCE, NRF_TIMER_BIT_WIDTH_32);
     nrf_timer_frequency_set(NRF_802154_TIMER_INSTANCE, NRF_TIMER_FREQ_1MHz);
 
 #if NRF_802154_DISABLE_BCC_MATCHING
@@ -1034,6 +1042,8 @@ static void rx_terminate(void)
     nrf_ppi_channel_disable(PPI_CRCOK_DIS_PPI);
     nrf_ppi_channel_disable(PPI_ADDRESS_COUNTER_COUNT);
     nrf_ppi_channel_disable(PPI_CRCERROR_COUNTER_CLEAR);
+    nrf_ppi_channel_endpoint_setup(PPI_CRCERROR_CLEAR, 0, 0);
+    nrf_ppi_fork_endpoint_setup(PPI_CRCERROR_CLEAR, 0);
 #endif // NRF_802154_DISABLE_BCC_MATCHING
 
     // Disable LNA
@@ -1098,6 +1108,8 @@ static void tx_ack_terminate(void)
 #if NRF_802154_DISABLE_BCC_MATCHING
     nrf_ppi_channel_disable(PPI_CRCERROR_CLEAR);
     nrf_ppi_channel_disable(PPI_CRCOK_DIS_PPI);
+    nrf_ppi_channel_endpoint_setup(PPI_CRCERROR_CLEAR, 0, 0);
+    nrf_ppi_fork_endpoint_setup(PPI_CRCERROR_CLEAR, 0);
 #endif // NRF_802154_DISABLE_BCC_MATCHING
 
     // Disable PA
@@ -2170,19 +2182,29 @@ static void irq_crcok_state_rx(void)
 #endif // !NRF_802154_DISABLE_BCC_MATCHING
 
             // Set FEM PPIs
-            uint32_t time_to_pa = nrf_timer_cc_read(NRF_802154_TIMER_INSTANCE,
-                                                    NRF_TIMER_CC_CHANNEL1);
+            uint32_t time_to_rampup = nrf_timer_cc_read(NRF_802154_TIMER_INSTANCE,
+                                                        NRF_TIMER_CC_CHANNEL1);
 
             nrf_802154_fal_event_t timer = m_activate_tx_cc0;
 
-            timer.event.timer.counter_value += time_to_pa;
+            timer.event.timer.counter_value += time_to_rampup;
 
             nrf_802154_fal_pa_configuration_set(&timer, NULL);
 
             // Detect if PPI worked (timer is counting or TIMER event is marked)
             nrf_timer_task_trigger(NRF_802154_TIMER_INSTANCE, NRF_TIMER_TASK_CAPTURE3);
-            if (nrf_timer_cc_read(NRF_802154_TIMER_INSTANCE, NRF_TIMER_CC_CHANNEL3) <
-                nrf_timer_cc_read(NRF_802154_TIMER_INSTANCE, NRF_TIMER_CC_CHANNEL1))
+            uint32_t current_timer_value = nrf_timer_cc_read(NRF_802154_TIMER_INSTANCE,
+                                                             NRF_TIMER_CC_CHANNEL3);
+            uint32_t time_to_fem = nrf_timer_cc_read(NRF_802154_TIMER_INSTANCE,
+                                                     NRF_TIMER_CC_CHANNEL0);
+
+            // When external PA uses timer, it should be configured to a time later than ramp up
+            // time. In such case, the timer stops with shorts on PA timer.
+            // But if external PA does not use timer, FEM time is set to a value in the pased
+            // used by LNA. After timer overflow, the timer stops with short on the past value
+            // used by LNA. We have to detect if the timer is after the overflow.
+            if ((current_timer_value < time_to_rampup) &&
+                ((time_to_fem >= time_to_rampup) || (current_timer_value > time_to_fem)))
             {
                 wait_for_phyend = true;
             }
@@ -2234,6 +2256,8 @@ static void irq_crcok_state_rx(void)
 
 #if !NRF_802154_DISABLE_BCC_MATCHING
                 nrf_ppi_channel_disable(PPI_TIMER_TX_ACK);
+                nrf_ppi_channel_endpoint_setup(PPI_TIMER_TX_ACK, 0, 0);
+                nrf_ppi_fork_endpoint_setup(PPI_TIMER_TX_ACK, 0);
 #endif // !NRF_802154_DISABLE_BCC_MATCHING
 
                 // RX uses the same peripherals as TX_ACK until RADIO ints are updated.
@@ -2364,7 +2388,9 @@ static void irq_phyend_state_tx_ack(void)
                                     NRF_TIMER_TASK_START));
 #else // NRF_802154_DISABLE_BCC_MATCHING
     nrf_ppi_channel_disable(PPI_TIMER_TX_ACK);
-#endif  // NRF_802154_DISABLE_BCC_MATCHING
+    nrf_ppi_channel_endpoint_setup(PPI_TIMER_TX_ACK, 0, 0);
+    nrf_ppi_fork_endpoint_setup(PPI_TIMER_TX_ACK, 0);
+#endif // NRF_802154_DISABLE_BCC_MATCHING
 
     // Enable PPI disabled by CRCOK
     nrf_ppi_channel_enable(PPI_EGU_RAMP_UP);
