@@ -5,6 +5,7 @@
         "_includes": [
             "src",
             "src/mac_features",
+            "src/mac_features/ack_generator",
             "src/rsch"
         ],
         "_headers": [
@@ -23,6 +24,8 @@
             "src/nrf_802154_rx_buffer.h",
             "src/nrf_802154_timer_coord.h",
             "src/mac_features/nrf_802154_filter.h",
+            "src/mac_features/nrf_802154_frame_parser.h",
+            "src/mac_features/ack_generator/nrf_802154_ack_generator.h",
             "src/rsch/nrf_802154_rsch.h",
             "src/rsch/nrf_802154_rsch_crit_sect.h"
         ],
@@ -53,10 +56,15 @@
                     "src/nrf_802154_rssi.c",
                     "src/nrf_802154_rx_buffer.c",
                     "src/nrf_802154_timer_coord.c",
-                    "src/mac_features/nrf_802154_precise_ack_timeout.c",
                     "src/mac_features/nrf_802154_csma_ca.c",
                     "src/mac_features/nrf_802154_delayed_trx.c",
                     "src/mac_features/nrf_802154_filter.c",
+                    "src/mac_features/nrf_802154_frame_parser.c",
+                    "src/mac_features/nrf_802154_precise_ack_timeout.c",
+                    "src/mac_features/ack_generator/nrf_802154_ack_data.c",
+                    "src/mac_features/ack_generator/nrf_802154_ack_generator.c",
+                    "src/mac_features/ack_generator/nrf_802154_enh_ack_generator.c",
+                    "src/mac_features/ack_generator/nrf_802154_imm_ack_generator.c",
                     "src/platform/clock/nrf_802154_clock_sdk.c",
                     "src/platform/hp_timer/nrf_802154_hp_timer.c",
                     "src/platform/lp_timer/nrf_802154_lp_timer_nodrv.c",
@@ -91,10 +99,15 @@
                     "src/nrf_802154_rssi.c",
                     "src/nrf_802154_rx_buffer.c",
                     "src/nrf_802154_timer_coord.c",
-                    "src/mac_features/nrf_802154_precise_ack_timeout.c",
                     "src/mac_features/nrf_802154_csma_ca.c",
                     "src/mac_features/nrf_802154_delayed_trx.c",
                     "src/mac_features/nrf_802154_filter.c",
+                    "src/mac_features/nrf_802154_frame_parser.c",
+                    "src/mac_features/nrf_802154_precise_ack_timeout.c",
+                    "src/mac_features/ack_generator/nrf_802154_ack_data.c",
+                    "src/mac_features/ack_generator/nrf_802154_ack_generator.c",
+                    "src/mac_features/ack_generator/nrf_802154_enh_ack_generator.c",
+                    "src/mac_features/ack_generator/nrf_802154_imm_ack_generator.c",
                     "src/platform/clock/nrf_802154_clock_sdk.c",
                     "src/platform/hp_timer/nrf_802154_hp_timer.c",
                     "src/platform/lp_timer/nrf_802154_lp_timer_nodrv.c",
@@ -164,6 +177,7 @@
                     "cmock\\mock_nrf_802154_critical_section.c",
                     "cmock\\mock_nrf_802154_debug.c",
                     "cmock\\mock_nrf_802154_filter.c",
+                    "cmock\\mock_nrf_802154_frame_parser.c",
                     "cmock\\mock_nrf_802154_notification.c",
                     "cmock\\mock_nrf_802154_pib.c",
                     "cmock\\mock_nrf_802154_priority_drop.c",
@@ -174,7 +188,8 @@
                     "cmock\\mock_nrf_802154_rsch_crit_sect.c",
                     "cmock\\mock_nrf_802154_rssi.c",
                     "cmock\\mock_nrf_802154_rx_buffer.c",
-                    "cmock\\mock_nrf_802154_timer_coord.c"
+                    "cmock\\mock_nrf_802154_timer_coord.c",
+                    "cmock\\mock_nrf_802154_ack_generator.c"
                 ],
                 "_includes": [
                     "3|cmock"

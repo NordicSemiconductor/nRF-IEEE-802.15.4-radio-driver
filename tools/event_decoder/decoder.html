@@ -236,6 +236,12 @@
 
             {id: "TSCH_ADD", val: 0x0600, from: "TSCH", to: "TSCH", text: "nrf_802154_timer_sched_add()"},
             {id: "TSCH_FIRED", val: 0x0601, from: "TSCH", to: "TSCH", text: "nrf_802154_lp_timer_fired()"},
+
+            {id: "TCOOR_START", val: 0x0700, from: "DRIVER", to: "TCOOR", text: "nrf_802154_timer_coord_start()"},
+            {id: "TCOOR_STOP", val: 0x0701, from: "DRIVER", to: "TCOOR", text: "nrf_802154_timer_coord_stop()"},
+            {id: "TCOOR_TIMESTAMP_PREPARE", val: 0x0702, from: "DRIVER", to: "TCOOR", text: "nrf_802154_timer_coord_timestamp_prepare()"},
+            {id: "TCOOR_TIMESTAMP_GET", val: 0x0703, from: "DRIVER", to: "TCOOR", text: "nrf_802154_timer_coord_timestamp_get()"},
+            {id: "TCOOR_SYNCHRONIZED", val: 0x0704, from: "TCOOR", to: "TCOOR", text: "nrf_802154_lp_timer_synchronized()"},
         ];
 
         var debugDecoder = function(debug_json, debug_ptr)
@@ -339,6 +345,7 @@
             this.addLine("Participant APP");
             this.addLine("Participant CSMACA");
             this.addLine("Participant TSCH");
+            this.addLine("Participant TCOOR");
             this.addLine("Participant DRIVER");
             this.addLine("Participant RSCH")
             this.addLine("Participant RAAL");

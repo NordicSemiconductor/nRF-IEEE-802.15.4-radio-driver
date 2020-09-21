@@ -35,6 +35,7 @@
 #include "nrf_802154_config.h"
 #include "nrf_802154_const.h"
 #include "mock_nrf_802154.h"
+#include "mock_nrf_802154_ack_generator.h"
 #include "mock_nrf_802154_ack_pending_bit.h"
 #include "mock_nrf_802154_core_hooks.h"
 #include "mock_nrf_802154_critical_section.h"
@@ -154,7 +155,7 @@ void tearDown(void)
 void nrf_802154_rx_started(void){}
 void nrf_802154_tx_started(const uint8_t * p_frame){}
 void nrf_802154_rx_ack_started(void){}
-void nrf_802154_tx_ack_started(void){}
+void nrf_802154_tx_ack_started(const uint8_t * p_data){}
 
 /***************************************************************************************************
  * @section Receive begin function
@@ -497,24 +498,16 @@ void test_crcok_handler_ShallFilterFrame(void)
 
 // ACK requested
 
-static const uint8_t * mp_ack;
-
-static void stub_ack_ptr_set(const void * p_ptr, int num_calls)
-{
-    mp_ack = p_ptr;
-
-    TEST_ASSERT_EQUAL(0, num_calls);
-}
-
 static void crcok_ack_periph_set_verify(void)
 {
-    uint32_t event_addr;
-    uint32_t task_addr;
+    uint8_t * p_ack = (uint8_t *)rand();
+    uint32_t  event_addr;
+    uint32_t  task_addr;
 
     nrf_802154_pib_auto_ack_get_ExpectAndReturn(true);
 
-    mp_ack = NULL;
-    nrf_radio_packet_ptr_set_StubWithCallback(stub_ack_ptr_set);
+    nrf_802154_ack_generator_create_ExpectAndReturn(m_buffer.psdu, p_ack);
+    nrf_radio_packet_ptr_set_Expect(p_ack);
 
     nrf_802154_revision_has_phyend_event_ExpectAndReturn(true);
     nrf_radio_shorts_set_Expect(NRF_RADIO_SHORT_TXREADY_START_MASK |
@@ -536,17 +529,18 @@ static void crcok_ack_periph_set_verify(void)
 
 void test_crcok_handler_ShallPreparePeriphsToTransmitAckIfRequested(void)
 {
-    uint32_t event_addr;
-    uint32_t task_addr;
-    uint32_t timer_cc1;
-    uint32_t timer_cc3;
+    uint8_t * p_ack = (uint8_t *)rand();
+    uint32_t  event_addr;
+    uint32_t  task_addr;
+    uint32_t  timer_cc1;
+    uint32_t  timer_cc3;
 
     insert_frame_with_ack_request_to_buffer();
 
     nrf_802154_pib_auto_ack_get_ExpectAndReturn(true);
 
-    mp_ack = NULL;
-    nrf_radio_packet_ptr_set_StubWithCallback(stub_ack_ptr_set);
+    nrf_802154_ack_generator_create_ExpectAndReturn(m_buffer.psdu, p_ack);
+    nrf_radio_packet_ptr_set_Expect(p_ack);
 
     nrf_802154_revision_has_phyend_event_ExpectAndReturn(true);
     nrf_radio_shorts_set_Expect(NRF_RADIO_SHORT_TXREADY_START_MASK |
@@ -571,7 +565,6 @@ void test_crcok_handler_ShallPreparePeriphsToTransmitAckIfRequested(void)
     nrf_timer_cc_read_ExpectAndReturn(NRF_802154_TIMER_INSTANCE, NRF_TIMER_CC_CHANNEL3, timer_cc3);
     nrf_timer_cc_read_ExpectAndReturn(NRF_802154_TIMER_INSTANCE, NRF_TIMER_CC_CHANNEL1, timer_cc1);
 
-    nrf_802154_ack_pending_bit_should_be_set_ExpectAndReturn(m_buffer.psdu, true);
     nrf_radio_int_disable_Expect(NRF_RADIO_INT_CRCERROR_MASK |
                                  NRF_RADIO_INT_BCMATCH_MASK  |
                                  NRF_RADIO_INT_CRCOK_MASK);
@@ -584,8 +577,6 @@ void test_crcok_handler_ShallPreparePeriphsToTransmitAckIfRequested(void)
     irq_crcok_state_rx();
 
     TEST_ASSERT_NOT_NULL(mp_ack);
-    TEST_ASSERT_EQUAL(m_buffer.psdu[3], mp_ack[3]);
-    TEST_ASSERT_EQUAL(0x12, mp_ack[1]);
 }
 
 void test_crcok_handler_ShallWaitForPhyendEventIfTimerIsTicking(void)
@@ -603,7 +594,6 @@ void test_crcok_handler_ShallWaitForPhyendEventIfTimerIsTicking(void)
     nrf_timer_cc_read_ExpectAndReturn(NRF_802154_TIMER_INSTANCE, NRF_TIMER_CC_CHANNEL3, timer_cc3);
     nrf_timer_cc_read_ExpectAndReturn(NRF_802154_TIMER_INSTANCE, NRF_TIMER_CC_CHANNEL1, timer_cc1);
 
-    nrf_802154_ack_pending_bit_should_be_set_ExpectAndReturn(m_buffer.psdu, true);
     nrf_radio_int_disable_Expect(NRF_RADIO_INT_CRCERROR_MASK |
                                  NRF_RADIO_INT_BCMATCH_MASK  |
                                  NRF_RADIO_INT_CRCOK_MASK);
@@ -631,7 +621,6 @@ void test_crcok_handler_ShallWaitForEndEventIfPhyendIsNotSupported(void)
     nrf_timer_cc_read_ExpectAndReturn(NRF_802154_TIMER_INSTANCE, NRF_TIMER_CC_CHANNEL3, timer_cc3);
     nrf_timer_cc_read_ExpectAndReturn(NRF_802154_TIMER_INSTANCE, NRF_TIMER_CC_CHANNEL1, timer_cc1);
 
-    nrf_802154_ack_pending_bit_should_be_set_ExpectAndReturn(m_buffer.psdu, true);
     nrf_radio_int_disable_Expect(NRF_RADIO_INT_CRCERROR_MASK |
                                  NRF_RADIO_INT_BCMATCH_MASK  |
                                  NRF_RADIO_INT_CRCOK_MASK);
@@ -661,7 +650,6 @@ void test_crcok_handler_ShallWaitForPhyendEventIfTransmitterIsRampingUp(void)
 
     nrf_radio_state_get_ExpectAndReturn(NRF_RADIO_STATE_TX_RU);
 
-    nrf_802154_ack_pending_bit_should_be_set_ExpectAndReturn(m_buffer.psdu, true);
     nrf_radio_int_disable_Expect(NRF_RADIO_INT_CRCERROR_MASK |
                                  NRF_RADIO_INT_BCMATCH_MASK  |
                                  NRF_RADIO_INT_CRCOK_MASK);
@@ -692,7 +680,6 @@ void test_crcok_handler_ShallWaitForPhyendEventIfTransmitterEndedRampingUp(void)
 
     nrf_radio_event_get_ExpectAndReturn(NRF_RADIO_EVENT_TXREADY, true);
 
-    nrf_802154_ack_pending_bit_should_be_set_ExpectAndReturn(m_buffer.psdu, true);
     nrf_radio_int_disable_Expect(NRF_RADIO_INT_CRCERROR_MASK |
                                  NRF_RADIO_INT_BCMATCH_MASK  |
                                  NRF_RADIO_INT_CRCOK_MASK);

@@ -1,4 +1,4 @@
-/* Copyright (c) 2017 - 2018, Nordic Semiconductor ASA
+/* Copyright (c) 2018, Nordic Semiconductor ASA
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -28,54 +28,66 @@
  *
  */
 
-#include "unity.h"
+/**
+ * @file
+ *   This module implements an acknowledgement generator for 802.15.4 radio driver.
+ *
+ */
 
-#include "nrf_802154_config.h"
+#include "nrf_802154_ack_generator.h"
+
+#include <assert.h>
+#include <stdlib.h>
+
 #include "nrf_802154_const.h"
-#include "mock_nrf_802154.h"
-#include "mock_nrf_802154_ack_pending_bit.h"
-#include "mock_nrf_802154_core_hooks.h"
-#include "mock_nrf_802154_debug.h"
-#include "mock_nrf_802154_notification.h"
-#include "mock_nrf_802154_pib.h"
-#include "mock_nrf_802154_priority_drop.h"
-#include "mock_nrf_802154_procedures_duration.h"
-#include "mock_nrf_802154_revision.h"
-#include "mock_nrf_802154_rx_buffer.h"
-#include "mock_nrf_fem_control_api.h"
-#include "mock_nrf_raal_api.h"
-#include "mock_nrf_radio.h"
-#include "mock_nrf_timer.h"
-#include "mock_nrf_egu.h"
-#include "mock_nrf_ppi.h"
+#include "nrf_802154_debug.h"
+#include "nrf_802154_enh_ack_generator.h"
+#include "nrf_802154_imm_ack_generator.h"
 
-#define __ISB()
-#define __LDREXB(ptr)           0
-#define __STREXB(value, ptr)    0
-
-void nrf_802154_rx_started(void){}
-void nrf_802154_tx_started(const uint8_t * p_frame){}
-void nrf_802154_rx_ack_started(void){}
-void nrf_802154_tx_ack_started(const uint8_t * p_data){}
-
-#include "nrf_802154_core.c"
-
-
-/***********************************************************************************/
-/***********************************************************************************/
-/***********************************************************************************/
-
-void setUp(void)
+typedef enum
 {
+    FRAME_VERSION_BELOW_2015,
+    FRAME_VERSION_2015_OR_ABOVE,
+    FRAME_VERSION_INVALID
+} frame_version_t;
 
+static frame_version_t frame_version_is_2015_or_above(const uint8_t * p_frame)
+{
+    switch (p_frame[FRAME_VERSION_OFFSET] & FRAME_VERSION_MASK)
+    {
+        case FRAME_VERSION_0:
+        case FRAME_VERSION_1:
+            return FRAME_VERSION_BELOW_2015;
+
+        case FRAME_VERSION_2:
+            return FRAME_VERSION_2015_OR_ABOVE;
+
+        default:
+            return FRAME_VERSION_INVALID;
+    }
 }
 
-void tearDown(void)
+void nrf_802154_ack_generator_init(void)
 {
-
+    // Both generators are initialized to enable sending both Imm-Acks and Enh-Acks.
+    nrf_802154_imm_ack_generator_init();
+    nrf_802154_enh_ack_generator_init();
 }
 
-void test_ShouldPass(void)
+const uint8_t * nrf_802154_ack_generator_create(const uint8_t * p_frame)
 {
-    TEST_ASSERT_EQUAL_UINT32(0, 0);
+    // This function should not be called if ACK is not requested.
+    assert(p_frame[ACK_REQUEST_OFFSET] & ACK_REQUEST_BIT);
+
+    switch (frame_version_is_2015_or_above(p_frame))
+    {
+        case FRAME_VERSION_BELOW_2015:
+            return nrf_802154_imm_ack_generator_create(p_frame);
+
+        case FRAME_VERSION_2015_OR_ABOVE:
+            return nrf_802154_enh_ack_generator_create(p_frame);
+
+        default:
+            return NULL;
+    }
 }

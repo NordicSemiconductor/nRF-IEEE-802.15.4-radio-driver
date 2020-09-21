@@ -35,6 +35,7 @@
 #include "nrf_802154_config.h"
 #include "nrf_802154_const.h"
 #include "mock_nrf_802154.h"
+#include "mock_nrf_802154_ack_generator.h"
 #include "mock_nrf_802154_ack_pending_bit.h"
 #include "mock_nrf_802154_core_hooks.h"
 #include "mock_nrf_802154_critical_section.h"
@@ -84,7 +85,7 @@ void nrf_802154_rx_ack_started(void)
     // Intentionally empty.
 }
 
-void nrf_802154_tx_ack_started(void)
+void nrf_802154_tx_ack_started(const uint8_t * p_data)
 {
     // Intentionally empty.
 }
@@ -226,7 +227,8 @@ static void mock_rx_ack_terminate(void)
 
     m_rsch_timeslot_is_granted = true;
 
-    nrf_radio_int_disable_Expect(NRF_RADIO_INT_END_MASK);
+    nrf_radio_int_disable_Expect(NRF_RADIO_INT_END_MASK |
+                                 NRF_RADIO_INT_ADDRESS_MASK);
     nrf_radio_shorts_set_Expect(SHORTS_IDLE);
     nrf_radio_task_trigger_Expect(NRF_RADIO_TASK_DISABLE);
 
@@ -356,10 +358,12 @@ static void mock_receive_begin(bool free_buffer, uint32_t shorts)
 
 static void mock_ack_requested_rx(void)
 {
-    uint32_t task_addr;
-    uint32_t event_addr;
+    uint8_t * p_ack = (uint8_t *)rand();
+    uint32_t  task_addr;
+    uint32_t  event_addr;
 
-    nrf_radio_packet_ptr_set_Expect(m_ack_psdu);
+    nrf_802154_ack_generator_create_ExpectAndReturn(m_test_rx_buffer.psdu, p_ack);
+    nrf_radio_packet_ptr_set_Expect(p_ack);
     nrf_802154_revision_has_phyend_event_ExpectAndReturn(true);
     nrf_radio_shorts_set_Expect(NRF_RADIO_SHORT_TXREADY_START_MASK |
                                 NRF_RADIO_SHORT_PHYEND_DISABLE_MASK);
@@ -383,7 +387,6 @@ static void mock_ack_requested_rx(void)
     nrf_timer_cc_read_ExpectAndReturn(NRF_802154_TIMER_INSTANCE, NRF_TIMER_CC_CHANNEL3, 1);
     nrf_timer_cc_read_ExpectAndReturn(NRF_802154_TIMER_INSTANCE, NRF_TIMER_CC_CHANNEL1, 2);
 
-    nrf_802154_ack_pending_bit_should_be_set_ExpectAndReturn(m_test_rx_buffer.psdu, false);
     nrf_radio_int_disable_Expect(NRF_RADIO_INT_BCMATCH_MASK  |
                                  NRF_RADIO_INT_CRCERROR_MASK |
                                  NRF_RADIO_INT_CRCOK_MASK);
@@ -437,13 +440,15 @@ static void mock_ack_requested_tx(void)
 
     nrf_radio_packet_ptr_set_Expect(m_test_rx_buffer.psdu);
 
-    nrf_radio_int_disable_Expect(NRF_RADIO_INT_CCABUSY_MASK |
-                                 NRF_RADIO_INT_ADDRESS_MASK);
 
     nrf_802154_revision_has_phyend_event_ExpectAndReturn(true);
-    nrf_radio_int_disable_Expect(NRF_RADIO_INT_PHYEND_MASK);
     nrf_radio_event_clear_Expect(NRF_RADIO_EVENT_END);
-    nrf_radio_int_enable_Expect(NRF_RADIO_INT_END_MASK);
+    nrf_radio_int_disable_Expect(NRF_RADIO_INT_CCABUSY_MASK |
+                                 NRF_RADIO_INT_ADDRESS_MASK |
+                                 NRF_RADIO_INT_PHYEND_MASK);
+    nrf_radio_event_clear_Expect(NRF_RADIO_EVENT_ADDRESS);
+    nrf_radio_int_enable_Expect(NRF_RADIO_INT_END_MASK |
+                                NRF_RADIO_INT_ADDRESS_MASK);
 
     nrf_fem_control_ppi_disable_Expect(NRF_FEM_CONTROL_ANY_PIN);
     nrf_fem_control_timer_reset_Expect(NRF_FEM_CONTROL_ANY_PIN, NRF_TIMER_SHORT_COMPARE0_STOP_MASK | NRF_TIMER_SHORT_COMPARE1_STOP_MASK);

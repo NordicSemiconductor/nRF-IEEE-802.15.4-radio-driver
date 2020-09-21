@@ -39,6 +39,7 @@
 #include "mock_nrf_802154_core_hooks.h"
 #include "mock_nrf_802154_critical_section.h"
 #include "mock_nrf_802154_debug.h"
+#include "mock_nrf_802154_frame_parser.h"
 #include "mock_nrf_802154_notification.h"
 #include "mock_nrf_802154_pib.h"
 #include "mock_nrf_802154_priority_drop.h"
@@ -73,6 +74,7 @@ static void insert_frame_with_noack_to_tx_buffer(void)
     mp_tx_data = m_tx_buffer;
     m_tx_buffer[0] = 16;
     m_tx_buffer[1] = 0x41;
+    m_tx_buffer[2] = 0x98;
 }
 
 static void insert_frame_with_ack_request_to_tx_buffer(void)
@@ -80,6 +82,22 @@ static void insert_frame_with_ack_request_to_tx_buffer(void)
     mp_tx_data = m_tx_buffer;
     m_tx_buffer[0] = 16;
     m_tx_buffer[1] = 0x61;
+    m_tx_buffer[2] = 0x98;
+}
+
+static void insert_frame_2015_with_ack_request_to_tx_buffer(void)
+{
+    mp_tx_data = m_tx_buffer;
+    m_tx_buffer[0] = 16;
+    m_tx_buffer[1] = 0x61;
+    m_tx_buffer[2] = 0xa8;
+}
+
+static void insert_ack_2015_to_rx_buffer(void)
+{
+    m_rx_buffer.psdu[0] = 5;
+    m_rx_buffer.psdu[1] = 0x42;
+    m_rx_buffer.psdu[2] = 0x28;
 }
 
 static void mark_rx_buffer_occupied(void)
@@ -235,15 +253,28 @@ static void verify_receive_begin_finds_free_buffer(void)
     nrf_802154_rx_buffer_free_find_ExpectAndReturn(NULL);
 }
 
-static void verify_complete_receive_begin(void)
+static void verify_complete_receive_begin(bool free_buffer)
 {
+    uint32_t shorts = NRF_RADIO_SHORT_ADDRESS_RSSISTART_MASK |
+                      NRF_RADIO_SHORT_END_DISABLE_MASK       |
+                      NRF_RADIO_SHORT_ADDRESS_BCSTART_MASK;
+
     m_rsch_timeslot_is_granted = true;
     verify_setting_tx_power();
-    verify_receive_begin_setup(NRF_RADIO_SHORT_ADDRESS_RSSISTART_MASK |
-                               NRF_RADIO_SHORT_END_DISABLE_MASK       |
-                               NRF_RADIO_SHORT_ADDRESS_BCSTART_MASK);
+
+    if (free_buffer)
+    {
+        nrf_radio_packet_ptr_set_Expect(&m_rx_buffer.psdu);
+        shorts |= NRF_RADIO_SHORT_RXREADY_START_MASK;
+    }
+
+    verify_receive_begin_setup(shorts);
     nrf_radio_state_get_ExpectAndReturn(NRF_RADIO_STATE_TX_DISABLE);
-    verify_receive_begin_finds_free_buffer();
+
+    if (!free_buffer)
+    {
+        verify_receive_begin_finds_free_buffer();
+    }
 }
 
 static void verify_complete_ack_matching_enable(void)
@@ -268,6 +299,11 @@ static void verify_complete_ack_is_matched(void)
     nrf_radio_crc_status_get_ExpectAndReturn(NRF_RADIO_CRC_STATUS_OK);
 }
 
+static void verify_complete_ack_is_not_matched(void)
+{
+    nrf_radio_event_get_ExpectAndReturn(NRF_RADIO_EVENT_MHRMATCH, false);
+}
+
 void setUp(void)
 {
     m_rsch_timeslot_is_granted = true;
@@ -285,7 +321,7 @@ void tearDown(void)
 void nrf_802154_rx_started(void){}
 void nrf_802154_tx_started(const uint8_t * p_frame){}
 void nrf_802154_rx_ack_started(void){}
-void nrf_802154_tx_ack_started(void){}
+void nrf_802154_tx_ack_started(const uint8_t * p_data){}
 
 /***************************************************************************************************
  * @section Transmit begin function
@@ -744,7 +780,7 @@ void test_ccabusy_handler_ShallResetToRxStateAndNotifyFailure(void)
     insert_frame_with_noack_to_tx_buffer();
 
     verify_tx_terminate_periph_reset(true);
-    verify_complete_receive_begin();
+    verify_complete_receive_begin(false);
 
     verify_transmit_failed_notification(NRF_802154_TX_ERROR_BUSY_CHANNEL);
 
@@ -770,11 +806,14 @@ static void verify_phyend_ack_req_periph_setup(uint32_t shorts, bool buffer_free
         nrf_radio_packet_ptr_set_Expect(m_rx_buffer.psdu);
     }
 
-    nrf_radio_int_disable_Expect(NRF_RADIO_INT_CCABUSY_MASK | NRF_RADIO_INT_ADDRESS_MASK);
     nrf_802154_revision_has_phyend_event_ExpectAndReturn(true);
-    nrf_radio_int_disable_Expect(NRF_RADIO_INT_PHYEND_MASK);
     nrf_radio_event_clear_Expect(NRF_RADIO_EVENT_END);
-    nrf_radio_int_enable_Expect(NRF_RADIO_INT_END_MASK);
+    nrf_radio_int_disable_Expect(NRF_RADIO_INT_CCABUSY_MASK |
+                                 NRF_RADIO_INT_ADDRESS_MASK |
+                                 NRF_RADIO_INT_PHYEND_MASK);
+    nrf_radio_event_clear_Expect(NRF_RADIO_EVENT_ADDRESS);
+    nrf_radio_int_enable_Expect(NRF_RADIO_INT_END_MASK |
+                                NRF_RADIO_INT_ADDRESS_MASK);
 
     // Clear FEM configuration set at the beginning of the transmission
     nrf_fem_control_ppi_disable_Expect(NRF_FEM_CONTROL_ANY_PIN);
@@ -825,7 +864,7 @@ void test_phyend_handler_ShallResetToRxStateAndNotifySuccessIfAckNotRequested(vo
     insert_frame_with_noack_to_tx_buffer();
 
     verify_tx_terminate_periph_reset(true);
-    verify_complete_receive_begin();
+    verify_complete_receive_begin(false);
 
     verify_transmitted_notification_noack();
 
@@ -1000,7 +1039,8 @@ static void verify_rx_ack_terminate_hardware_reset(bool in_timeslot)
 
     if (in_timeslot)
     {
-        nrf_radio_int_disable_Expect(NRF_RADIO_INT_END_MASK);
+        nrf_radio_int_disable_Expect(NRF_RADIO_INT_END_MASK |
+                                     NRF_RADIO_INT_ADDRESS_MASK);
         nrf_radio_shorts_set_Expect(0);
 
         nrf_radio_task_trigger_Expect(NRF_RADIO_TASK_DISABLE);
@@ -1033,10 +1073,311 @@ void test_end_handler_ShallResetRadioToStartReceivingAndNotifyTransmittedFrame(v
 
     verify_complete_ack_is_matched();
     verify_rx_ack_terminate_hardware_reset(true);
-    verify_complete_receive_begin();
+    verify_complete_receive_begin(false);
     verify_transmitted_notification_ack();
 
     irq_end_state_rx_ack();
     TEST_ASSERT_EQUAL(RADIO_STATE_RX, m_state);
     TEST_ASSERT_EQUAL(false, m_rx_buffer.free);
 }
+
+void test_end_handler_ShallResetRadioToStartReceivingAndNotifyFailureOnOtherFrame(void)
+{
+    mark_rx_buffer_free();
+
+    verify_complete_ack_is_not_matched();
+    verify_rx_ack_terminate_hardware_reset(true);
+    verify_complete_receive_begin(true);
+    verify_transmit_failed_notification(NRF_802154_TX_ERROR_INVALID_ACK);
+
+    irq_end_state_rx_ack();
+    TEST_ASSERT_EQUAL(RADIO_STATE_RX, m_state);
+    TEST_ASSERT_EQUAL(true, m_rx_buffer.free);
+}
+
+void test_end_handler_ShallResetRadioToStartReceivingAndNotifyTransmittedFrameType2015(void)
+{
+    nrf_802154_frame_parser_mhr_data_t tx_data;
+    nrf_802154_frame_parser_mhr_data_t ack_data;
+    uint16_t tx_src_addr = rand();
+    uint16_t ack_dst_addr = tx_src_addr;
+
+    memset(&tx_data, 0, sizeof(tx_data));
+    memset(&ack_data, 0, sizeof(ack_data));
+
+    tx_data.p_src_addr = (uint8_t *)&tx_src_addr;
+    ack_data.p_dst_addr = (uint8_t *)&ack_dst_addr;
+
+    tx_data.src_addr_size = SHORT_ADDRESS_SIZE;
+    ack_data.dst_addr_size = SHORT_ADDRESS_SIZE;
+
+    mark_rx_buffer_free();
+    insert_ack_2015_to_rx_buffer();
+    insert_frame_2015_with_ack_request_to_tx_buffer();
+
+    verify_complete_ack_is_not_matched();
+    nrf_radio_crc_status_get_ExpectAndReturn(NRF_RADIO_CRC_STATUS_OK);
+
+    nrf_802154_frame_parser_mhr_parse_ExpectAndReturn(m_tx_buffer, NULL, true);
+    nrf_802154_frame_parser_mhr_parse_IgnoreArg_p_fields();
+    nrf_802154_frame_parser_mhr_parse_ReturnThruPtr_p_fields(&tx_data);
+
+    nrf_802154_frame_parser_mhr_parse_ExpectAndReturn(m_rx_buffer.psdu, NULL, true);
+    nrf_802154_frame_parser_mhr_parse_IgnoreArg_p_fields();
+    nrf_802154_frame_parser_mhr_parse_ReturnThruPtr_p_fields(&ack_data);
+
+    verify_rx_ack_terminate_hardware_reset(true);
+    verify_complete_receive_begin(false);
+    verify_transmitted_notification_ack();
+
+    irq_end_state_rx_ack();
+    TEST_ASSERT_EQUAL(RADIO_STATE_RX, m_state);
+    TEST_ASSERT_EQUAL(false, m_rx_buffer.free);
+}
+
+void test_end_handler_ShallResetRadioToStartReceivingAndNotifyTransmitFailedWhenAckDstAddrSizeDiffers(void)
+{
+    nrf_802154_frame_parser_mhr_data_t tx_data;
+    nrf_802154_frame_parser_mhr_data_t ack_data;
+    uint16_t tx_src_addr = rand();
+    uint16_t ack_dst_addr = tx_src_addr;
+
+    memset(&tx_data, 0, sizeof(tx_data));
+    memset(&ack_data, 0, sizeof(ack_data));
+
+    tx_data.p_src_addr = (uint8_t *)&tx_src_addr;
+    ack_data.p_dst_addr = (uint8_t *)&ack_dst_addr;
+
+    tx_data.src_addr_size = SHORT_ADDRESS_SIZE;
+    ack_data.dst_addr_size = EXTENDED_ADDRESS_SIZE;
+
+    mark_rx_buffer_free();
+    insert_ack_2015_to_rx_buffer();
+    insert_frame_2015_with_ack_request_to_tx_buffer();
+
+    verify_complete_ack_is_not_matched();
+    nrf_radio_crc_status_get_ExpectAndReturn(NRF_RADIO_CRC_STATUS_OK);
+
+    nrf_802154_frame_parser_mhr_parse_ExpectAndReturn(m_tx_buffer, NULL, true);
+    nrf_802154_frame_parser_mhr_parse_IgnoreArg_p_fields();
+    nrf_802154_frame_parser_mhr_parse_ReturnThruPtr_p_fields(&tx_data);
+
+    nrf_802154_frame_parser_mhr_parse_ExpectAndReturn(m_rx_buffer.psdu, NULL, true);
+    nrf_802154_frame_parser_mhr_parse_IgnoreArg_p_fields();
+    nrf_802154_frame_parser_mhr_parse_ReturnThruPtr_p_fields(&ack_data);
+
+    verify_rx_ack_terminate_hardware_reset(true);
+    verify_complete_receive_begin(true);
+    verify_transmit_failed_notification(NRF_802154_TX_ERROR_INVALID_ACK);
+
+    irq_end_state_rx_ack();
+    TEST_ASSERT_EQUAL(RADIO_STATE_RX, m_state);
+    TEST_ASSERT_EQUAL(true, m_rx_buffer.free);
+}
+
+void test_end_handler_ShallResetRadioToStartReceivingAndNotifyTransmitFailedWhenAckDstAddrDiffers(void)
+{
+    nrf_802154_frame_parser_mhr_data_t tx_data;
+    nrf_802154_frame_parser_mhr_data_t ack_data;
+    uint16_t tx_src_addr = rand();
+    uint16_t ack_dst_addr = tx_src_addr + 1;
+
+    memset(&tx_data, 0, sizeof(tx_data));
+    memset(&ack_data, 0, sizeof(ack_data));
+
+    tx_data.p_src_addr = (uint8_t *)&tx_src_addr;
+    ack_data.p_dst_addr = (uint8_t *)&ack_dst_addr;
+
+    tx_data.src_addr_size = SHORT_ADDRESS_SIZE;
+    ack_data.dst_addr_size = SHORT_ADDRESS_SIZE;
+
+    mark_rx_buffer_free();
+    insert_ack_2015_to_rx_buffer();
+    insert_frame_2015_with_ack_request_to_tx_buffer();
+
+    verify_complete_ack_is_not_matched();
+    nrf_radio_crc_status_get_ExpectAndReturn(NRF_RADIO_CRC_STATUS_OK);
+
+    nrf_802154_frame_parser_mhr_parse_ExpectAndReturn(m_tx_buffer, NULL, true);
+    nrf_802154_frame_parser_mhr_parse_IgnoreArg_p_fields();
+    nrf_802154_frame_parser_mhr_parse_ReturnThruPtr_p_fields(&tx_data);
+
+    nrf_802154_frame_parser_mhr_parse_ExpectAndReturn(m_rx_buffer.psdu, NULL, true);
+    nrf_802154_frame_parser_mhr_parse_IgnoreArg_p_fields();
+    nrf_802154_frame_parser_mhr_parse_ReturnThruPtr_p_fields(&ack_data);
+
+    verify_rx_ack_terminate_hardware_reset(true);
+    verify_complete_receive_begin(true);
+    verify_transmit_failed_notification(NRF_802154_TX_ERROR_INVALID_ACK);
+
+    irq_end_state_rx_ack();
+    TEST_ASSERT_EQUAL(RADIO_STATE_RX, m_state);
+    TEST_ASSERT_EQUAL(true, m_rx_buffer.free);
+}
+
+void test_end_handler_ShallResetRadioToStartReceivingAndNotifyTransmitFailedWhenAckDstAddrIsMissing(void)
+{
+    nrf_802154_frame_parser_mhr_data_t tx_data;
+    nrf_802154_frame_parser_mhr_data_t ack_data;
+    uint16_t tx_src_addr = rand();
+
+    memset(&tx_data, 0, sizeof(tx_data));
+    memset(&ack_data, 0, sizeof(ack_data));
+
+    tx_data.p_src_addr = (uint8_t *)&tx_src_addr;
+    ack_data.p_dst_addr = NULL;
+
+    tx_data.src_addr_size = SHORT_ADDRESS_SIZE;
+    ack_data.dst_addr_size = 0;
+
+    mark_rx_buffer_free();
+    insert_ack_2015_to_rx_buffer();
+    insert_frame_2015_with_ack_request_to_tx_buffer();
+
+    verify_complete_ack_is_not_matched();
+    nrf_radio_crc_status_get_ExpectAndReturn(NRF_RADIO_CRC_STATUS_OK);
+
+    nrf_802154_frame_parser_mhr_parse_ExpectAndReturn(m_tx_buffer, NULL, true);
+    nrf_802154_frame_parser_mhr_parse_IgnoreArg_p_fields();
+    nrf_802154_frame_parser_mhr_parse_ReturnThruPtr_p_fields(&tx_data);
+
+    nrf_802154_frame_parser_mhr_parse_ExpectAndReturn(m_rx_buffer.psdu, NULL, true);
+    nrf_802154_frame_parser_mhr_parse_IgnoreArg_p_fields();
+    nrf_802154_frame_parser_mhr_parse_ReturnThruPtr_p_fields(&ack_data);
+
+    verify_rx_ack_terminate_hardware_reset(true);
+    verify_complete_receive_begin(true);
+    verify_transmit_failed_notification(NRF_802154_TX_ERROR_INVALID_ACK);
+
+    irq_end_state_rx_ack();
+    TEST_ASSERT_EQUAL(RADIO_STATE_RX, m_state);
+    TEST_ASSERT_EQUAL(true, m_rx_buffer.free);
+}
+
+
+void test_end_handler_ShallResetRadioToStartReceivingAndNotifyTransmitFailedWhenAckIsInvalid(void)
+{
+    nrf_802154_frame_parser_mhr_data_t tx_data;
+    nrf_802154_frame_parser_mhr_data_t ack_data;
+    uint16_t tx_src_addr = rand();
+    uint16_t ack_dst_addr = tx_src_addr + 1;
+
+    memset(&tx_data, 0, sizeof(tx_data));
+    memset(&ack_data, 0, sizeof(ack_data));
+
+    tx_data.p_src_addr = (uint8_t *)&tx_src_addr;
+    ack_data.p_dst_addr = (uint8_t *)&ack_dst_addr;
+
+    tx_data.src_addr_size = SHORT_ADDRESS_SIZE;
+    ack_data.dst_addr_size = SHORT_ADDRESS_SIZE;
+
+    mark_rx_buffer_free();
+    insert_ack_2015_to_rx_buffer();
+    insert_frame_2015_with_ack_request_to_tx_buffer();
+
+    verify_complete_ack_is_not_matched();
+    nrf_radio_crc_status_get_ExpectAndReturn(NRF_RADIO_CRC_STATUS_OK);
+
+    nrf_802154_frame_parser_mhr_parse_ExpectAndReturn(m_tx_buffer, NULL, true);
+    nrf_802154_frame_parser_mhr_parse_IgnoreArg_p_fields();
+    nrf_802154_frame_parser_mhr_parse_ReturnThruPtr_p_fields(&tx_data);
+
+    nrf_802154_frame_parser_mhr_parse_ExpectAndReturn(m_rx_buffer.psdu, NULL, false);
+    nrf_802154_frame_parser_mhr_parse_IgnoreArg_p_fields();
+
+    verify_rx_ack_terminate_hardware_reset(true);
+    verify_complete_receive_begin(true);
+    verify_transmit_failed_notification(NRF_802154_TX_ERROR_INVALID_ACK);
+
+    irq_end_state_rx_ack();
+    TEST_ASSERT_EQUAL(RADIO_STATE_RX, m_state);
+    TEST_ASSERT_EQUAL(true, m_rx_buffer.free);
+}
+
+void test_end_handler_ShallResetRadioToStartReceivingAndNotifyTransmitFailedWhenAckCrcIsIsInvalid(void)
+{
+    nrf_802154_frame_parser_mhr_data_t tx_data;
+    nrf_802154_frame_parser_mhr_data_t ack_data;
+    uint16_t tx_src_addr = rand();
+    uint16_t ack_dst_addr = tx_src_addr + 1;
+
+    memset(&tx_data, 0, sizeof(tx_data));
+    memset(&ack_data, 0, sizeof(ack_data));
+
+    tx_data.p_src_addr = (uint8_t *)&tx_src_addr;
+    ack_data.p_dst_addr = (uint8_t *)&ack_dst_addr;
+
+    tx_data.src_addr_size = SHORT_ADDRESS_SIZE;
+    ack_data.dst_addr_size = SHORT_ADDRESS_SIZE;
+
+    mark_rx_buffer_free();
+    insert_ack_2015_to_rx_buffer();
+    insert_frame_2015_with_ack_request_to_tx_buffer();
+
+    verify_complete_ack_is_not_matched();
+    nrf_radio_crc_status_get_ExpectAndReturn(NRF_RADIO_CRC_STATUS_ERROR);
+
+    verify_rx_ack_terminate_hardware_reset(true);
+    verify_complete_receive_begin(true);
+    verify_transmit_failed_notification(NRF_802154_TX_ERROR_INVALID_ACK);
+
+    irq_end_state_rx_ack();
+    TEST_ASSERT_EQUAL(RADIO_STATE_RX, m_state);
+    TEST_ASSERT_EQUAL(true, m_rx_buffer.free);
+}
+
+void test_end_handler_ShallResetRadioToStartReceivingAndNotifyTransmitFailedWhenAckTypeIsInvalid(void)
+{
+    mark_rx_buffer_free();
+    insert_ack_2015_to_rx_buffer();
+    insert_frame_2015_with_ack_request_to_tx_buffer();
+
+    m_rx_buffer.psdu[FRAME_TYPE_OFFSET] |= FRAME_TYPE_MASK;
+
+    verify_complete_ack_is_not_matched();
+
+    verify_rx_ack_terminate_hardware_reset(true);
+    verify_complete_receive_begin(true);
+    verify_transmit_failed_notification(NRF_802154_TX_ERROR_INVALID_ACK);
+
+    irq_end_state_rx_ack();
+    TEST_ASSERT_EQUAL(RADIO_STATE_RX, m_state);
+    TEST_ASSERT_EQUAL(true, m_rx_buffer.free);
+}
+
+void test_end_handler_ShallResetRadioToStartReceivingAndNotifyTransmitFailedWhenAckVersionIsInvalid(void)
+{
+    mark_rx_buffer_free();
+    insert_ack_2015_to_rx_buffer();
+    insert_frame_2015_with_ack_request_to_tx_buffer();
+
+    m_rx_buffer.psdu[FRAME_VERSION_OFFSET] |= FRAME_VERSION_MASK;
+
+    verify_complete_ack_is_not_matched();
+
+    verify_rx_ack_terminate_hardware_reset(true);
+    verify_complete_receive_begin(true);
+    verify_transmit_failed_notification(NRF_802154_TX_ERROR_INVALID_ACK);
+
+    irq_end_state_rx_ack();
+    TEST_ASSERT_EQUAL(RADIO_STATE_RX, m_state);
+    TEST_ASSERT_EQUAL(true, m_rx_buffer.free);
+}
+
+void test_end_handler_ShallResetRadioToStartReceivingAndNotifyTransmitFailedWhenSeqIsNotMatchedAndTransmittedFrameIsVersion2006(void)
+{
+    mark_rx_buffer_free();
+    insert_ack_2015_to_rx_buffer();
+    insert_frame_with_ack_request_to_tx_buffer();
+
+    verify_complete_ack_is_not_matched();
+
+    verify_rx_ack_terminate_hardware_reset(true);
+    verify_complete_receive_begin(true);
+    verify_transmit_failed_notification(NRF_802154_TX_ERROR_INVALID_ACK);
+
+    irq_end_state_rx_ack();
+    TEST_ASSERT_EQUAL(RADIO_STATE_RX, m_state);
+    TEST_ASSERT_EQUAL(true, m_rx_buffer.free);
+}
+
