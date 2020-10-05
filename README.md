@@ -1,10 +1,5 @@
 # nRF IEEE 802.15.4 radio driver
 
-[![Build Status][travis-svg]][travis]
-
-[travis]: https://travis-ci.org/NordicSemiconductor/nRF-IEEE-802.15.4-radio-driver
-[travis-svg]: https://travis-ci.org/NordicSemiconductor/nRF-IEEE-802.15.4-radio-driver.svg?branch=master
-
 The nRF IEEE 802.15.4 radio driver implements the IEEE 802.15.4 PHY layer on the Nordic Semiconductor nRF52811 and nRF52840 SoCs.
 
 The architecture of the nRF IEEE 802.15.4 radio driver is independent of the OS and IEEE 802.15.4 MAC layer.
