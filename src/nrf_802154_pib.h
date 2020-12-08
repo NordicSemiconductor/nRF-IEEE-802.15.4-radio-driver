@@ -1,31 +1,32 @@
-/* Copyright (c) 2017 - 2018, Nordic Semiconductor ASA
+/*
+ * Copyright (c) 2017 - 2020, Nordic Semiconductor ASA
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
  *
- *   1. Redistributions of source code must retain the above copyright notice, this
- *      list of conditions and the following disclaimer.
+ * 1. Redistributions of source code must retain the above copyright notice, this
+ *    list of conditions and the following disclaimer.
  *
- *   2. Redistributions in binary form must reproduce the above copyright notice,
- *      this list of conditions and the following disclaimer in the documentation
- *      and/or other materials provided with the distribution.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
  *
- *   3. Neither the name of Nordic Semiconductor ASA nor the names of its
- *      contributors may be used to endorse or promote products derived from
- *      this software without specific prior written permission.
+ * 3. Neither the name of the copyright holder nor the names of its
+ *    contributors may be used to endorse or promote products derived from this
+ *    software without specific prior written permission.
  *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
  * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
- * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
- * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
- * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
- * CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
- * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
- * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- *
+ * IMPLIED WARRANTIES OF MERCHANTABILITY, AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ * POSSIBILITY OF SUCH DAMAGE.
  */
 
 /**
@@ -185,6 +186,141 @@ void nrf_802154_pib_cca_cfg_set(const nrf_802154_cca_cfg_t * p_cca_cfg);
  * @param[out] p_cca_cfg Pointer to the structure for the current CCA configuration.
  */
 void nrf_802154_pib_cca_cfg_get(nrf_802154_cca_cfg_t * p_cca_cfg);
+
+/**
+ * @brief Sets Coex request mode used in receive operations.
+ *
+ * @param[in] mode  Coex receive request mode.
+ *
+ * @retval true     When value provided by @p mode param is supported.
+ * @retval false    Otherwise.
+ */
+bool nrf_802154_pib_coex_rx_request_mode_set(nrf_802154_coex_rx_request_mode_t mode);
+
+/**
+ * @brief Gets Coex request mode used in receive operations.
+ *
+ * @return Current Coex receive request mode.
+ */
+nrf_802154_coex_rx_request_mode_t nrf_802154_pib_coex_rx_request_mode_get(void);
+
+/**
+ * @brief Sets Coex request mode used in transmit operations.
+ *
+ * @param[in] mode  Coex transmit request mode.
+ *
+ * @retval true     When value provided by @p mode param is supported.
+ * @retval false    Otherwise.
+ */
+bool nrf_802154_pib_coex_tx_request_mode_set(nrf_802154_coex_tx_request_mode_t mode);
+
+/**
+ * @brief Gets Coex request mode used in transmit operations.
+ *
+ * @return Current Coex transmit request mode.
+ */
+nrf_802154_coex_tx_request_mode_t nrf_802154_pib_coex_tx_request_mode_get(void);
+
+#if NRF_802154_CSMA_CA_ENABLED
+/**
+ * @brief Sets the minimum value of the backoff exponent (BE) in the CSMA-CA algorithm.
+ *
+ * @param[in] min_be  Minimum value of the backoff exponent.
+ *
+ * @retval true   When value provided by @p min_be does not exceed the implementation limit ( <= 8).
+ * @retval false  Otherwise.
+ */
+bool nrf_802154_pib_csmaca_min_be_set(uint8_t min_be);
+
+/**
+ * @brief Gets the minimum value of the backoff exponent (BE) in the CSMA-CA algorithm.
+ *
+ * @return Current minimum value of the backoff exponent.
+ */
+uint8_t nrf_802154_pib_csmaca_min_be_get(void);
+
+/**
+ * @brief Sets the maximum value of the backoff exponent (BE) in the CSMA-CA algorithm.
+ *
+ * @param[in] max_be  Maximum value of the backoff exponent.
+ *
+ * @retval true   When value provided by @p max_be does not exceed the implementation limit ( <= 8).
+ * @retval false  Otherwise.
+ */
+bool nrf_802154_pib_csmaca_max_be_set(uint8_t max_be);
+
+/**
+ * @brief Gets the maximum value of the backoff exponent (BE) in the CSMA-CA algorithm.
+ *
+ * @return Current maximum value of the backoff exponent.
+ */
+uint8_t nrf_802154_pib_csmaca_max_be_get(void);
+
+/**
+ * @brief Sets the maximum number of backoffs the CSMA-CA algorithm will attempt before declaring
+ *        a channel access failure.
+ *
+ * @param[in] max_backoffs  Maximum number of backoffs.
+ */
+void nrf_802154_pib_csmaca_max_backoffs_set(uint8_t max_backoffs);
+
+/**
+ * @brief Gets the maximum number of backoffs the CSMA-CA algorithm will attempt before declaring
+ *        a channel access failure.
+ *
+ * @return Current maximum number of backoffs.
+ */
+uint8_t nrf_802154_pib_csmaca_max_backoffs_get(void);
+#endif // NRF_802154_CSMA_CA_ENABLED
+
+#if NRF_802154_IFS_ENABLED
+/**
+ * @brief Gets IFS operation mode.
+ *
+ * @return Current IFS operation mode. Refer to @ref nrf_802154_ifs_mode_t for details.
+ */
+nrf_802154_ifs_mode_t nrf_802154_pib_ifs_mode_get(void);
+
+/**
+ * @brief Sets IFS operation mode.
+ *
+ * @param[in] mode  IFS operation mode. Refer to @ref nrf_802154_ifs_mode_t for details.
+ *
+ * @retval    true  The update of PIB was successful.
+ * @retval    false The update of PIB failed due to the unsupported mode.
+ */
+bool nrf_802154_pib_ifs_mode_set(nrf_802154_ifs_mode_t mode);
+
+/**
+ * @brief Gets Short IFS period in microseconds.
+ *
+ * @return Current Short IFS period in microseconds.
+ */
+uint16_t nrf_802154_pib_ifs_min_sifs_period_get(void);
+
+/**
+ * @brief Sets Short IFS period in microseconds.
+ *
+ * @param[in] period Short IFS period in microseconds.
+ *
+ * @note The period cannot be smaller than aTurnaroundTime.
+ */
+void nrf_802154_pib_ifs_min_sifs_period_set(uint16_t period);
+
+/**
+ * @brief Gets Long IFS period in microseconds.
+ *
+ * @return Current Long IFS period in microseconds.
+ */
+uint16_t nrf_802154_pib_ifs_min_lifs_period_get(void);
+
+/**
+ * @brief Sets Long IFS period in microseconds.
+ *
+ * @param[in] period Long IFS period in microseconds.
+ */
+void nrf_802154_pib_ifs_min_lifs_period_set(uint16_t period);
+#endif // NRF_802154_IFS_ENABLED
 
 #ifdef __cplusplus
 }

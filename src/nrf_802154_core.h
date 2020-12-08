@@ -1,31 +1,32 @@
-/* Copyright (c) 2017 - 2018, Nordic Semiconductor ASA
+/*
+ * Copyright (c) 2017 - 2020, Nordic Semiconductor ASA
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
  *
- *   1. Redistributions of source code must retain the above copyright notice, this
- *      list of conditions and the following disclaimer.
+ * 1. Redistributions of source code must retain the above copyright notice, this
+ *    list of conditions and the following disclaimer.
  *
- *   2. Redistributions in binary form must reproduce the above copyright notice,
- *      this list of conditions and the following disclaimer in the documentation
- *      and/or other materials provided with the distribution.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
  *
- *   3. Neither the name of Nordic Semiconductor ASA nor the names of its
- *      contributors may be used to endorse or promote products derived from
- *      this software without specific prior written permission.
+ * 3. Neither the name of the copyright holder nor the names of its
+ *    contributors may be used to endorse or promote products derived from this
+ *    software without specific prior written permission.
  *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
  * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
- * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
- * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
- * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
- * CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
- * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
- * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- *
+ * IMPLIED WARRANTIES OF MERCHANTABILITY, AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ * POSSIBILITY OF SUCH DAMAGE.
  */
 
 /**
@@ -74,6 +75,9 @@ typedef enum
 
     // Continuous carrier
     RADIO_STATE_CONTINUOUS_CARRIER, ///< Emitting the continuous carrier wave.
+
+    // Modulated carrier
+    RADIO_STATE_MODULATED_CARRIER   ///< Emitting the modulated carrier signal.
 } radio_state_t;
 
 /**
@@ -163,6 +167,8 @@ bool nrf_802154_core_energy_detection(nrf_802154_term_t term_lvl, uint32_t time_
 /**
  * @brief Requests the transition to the @ref RADIO_STATE_CCA state.
  *
+ * When the CCA procedure is finished, the driver transitions to the @ref RADIO_STATE_RX state.
+ *
  * @param[in]  term_lvl  Termination level of this request. Selects procedures to abort.
  *
  * @retval  true   Entering the CCA state succeeded.
@@ -173,8 +179,6 @@ bool nrf_802154_core_cca(nrf_802154_term_t term_lvl);
 /**
  * @brief Requests the transition to the @ref RADIO_STATE_CONTINUOUS_CARRIER state.
  *
- * When the CCA procedure is finished, the driver transitions to the @ref RADIO_STATE_RX state.
- *
  * @param[in]  term_lvl  Termination level of this request. Selects procedures to abort.
  *
  * @retval  true   Entering the continuous carrier state succeeded.
@@ -182,6 +186,19 @@ bool nrf_802154_core_cca(nrf_802154_term_t term_lvl);
  *                 (the driver is performing other procedure).
  */
 bool nrf_802154_core_continuous_carrier(nrf_802154_term_t term_lvl);
+
+/**
+ * @brief Requests the transition to the @ref RADIO_STATE_MODULATED_CARRIER state.
+ *
+ * @param[in] term_lvl  Termination level of this request. Selects procedures to abort.
+ * @param[in] p_data    Data buffer to modulate the carrier with.
+ *
+ * @retval  true   Entering the modulated carrier state succeeded.
+ * @retval  false  Entering the modulated carrier state failed
+ *                 (the driver is performing other procedure).
+ */
+bool nrf_802154_core_modulated_carrier(nrf_802154_term_t term_lvl,
+                                       const uint8_t   * p_data);
 
 /***************************************************************************************************
  * @section State machine notifications
@@ -202,9 +219,9 @@ bool nrf_802154_core_notify_buffer_free(uint8_t * p_data);
  * @brief Notifies the core module that the next higher layer requested the change of the channel.
  *
  * The core is expected to update the frequency register of the peripheral and, if it is
- * in the @ref RADIO_STATE_RX or in the @ref RADIO_STATE_CONTINUOUS_CARRIER state, the transceiver
- * is disabled and enabled again to use the new channel.
- *
+ * in the @ref RADIO_STATE_RX, in the @ref RADIO_STATE_CONTINUOUS_CARRIER
+ * or in the @ref RADIO_STATE_MODULATED_CARRIER state, the transceiver is disabled
+ * and enabled again to use the new channel.
  */
 bool nrf_802154_core_channel_update(void);
 
@@ -225,6 +242,11 @@ bool nrf_802154_core_rssi_measure(void);
  * @param[out]  p_rssi  RSSI measurement value in dBm.
  */
 bool nrf_802154_core_last_rssi_measurement_get(int8_t * p_rssi);
+
+/**
+ * @brief Notifies the core module that the next higher layer requested the change of the antenna.
+ */
+bool nrf_802154_core_antenna_update(void);
 
 #if !NRF_802154_INTERNAL_IRQ_HANDLING
 /**

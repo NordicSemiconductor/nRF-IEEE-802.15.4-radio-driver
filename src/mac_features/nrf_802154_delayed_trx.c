@@ -1,31 +1,32 @@
-/* Copyright (c) 2018 - 2019, Nordic Semiconductor ASA
+/*
+ * Copyright (c) 2018 - 2020, Nordic Semiconductor ASA
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
  *
- *   1. Redistributions of source code must retain the above copyright notice, this
- *      list of conditions and the following disclaimer.
+ * 1. Redistributions of source code must retain the above copyright notice, this
+ *    list of conditions and the following disclaimer.
  *
- *   2. Redistributions in binary form must reproduce the above copyright notice,
- *      this list of conditions and the following disclaimer in the documentation
- *      and/or other materials provided with the distribution.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
  *
- *   3. Neither the name of Nordic Semiconductor ASA nor the names of its
- *      contributors may be used to endorse or promote products derived from
- *      this software without specific prior written permission.
+ * 3. Neither the name of the copyright holder nor the names of its
+ *    contributors may be used to endorse or promote products derived from this
+ *    software without specific prior written permission.
  *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
  * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
- * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
- * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
- * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
- * CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
- * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
- * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- *
+ * IMPLIED WARRANTIES OF MERCHANTABILITY, AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ * POSSIBILITY OF SUCH DAMAGE.
  */
 
 /**
@@ -33,6 +34,8 @@
  *   This file implements delayed transmission and reception features.
  *
  */
+
+#define NRF_802154_MODULE_ID NRF_802154_DRV_MODULE_ID_DELAYED_TRX
 
 #include "nrf_802154_delayed_trx.h"
 
@@ -49,13 +52,15 @@
 #include "nrf_802154_procedures_duration.h"
 #include "nrf_802154_request.h"
 #include "rsch/nrf_802154_rsch.h"
-#include "timer_scheduler/nrf_802154_timer_sched.h"
+#include "timer/nrf_802154_timer_sched.h"
+
+#if NRF_802154_DELAYED_TRX_ENABLED
 
 /* The following time is the sum of 70us RTC_IRQHandler processing time, 40us of time that elapses
  * from the moment a board starts transmission to the moment other boards (e.g. sniffer) are able
- * to detect that frame and in case of TX - 50us that accounts for a delay of yet unknown origin.
+ * to detect that frame and in case of TX - 93us that accounts for a delay of yet unknown origin.
  */
-#define TX_SETUP_TIME 160u ///< Time needed to prepare TX procedure [us]. It does not include TX ramp-up time.
+#define TX_SETUP_TIME 203u ///< Time needed to prepare TX procedure [us]. It does not include TX ramp-up time.
 #define RX_SETUP_TIME 110u ///< Time needed to prepare RX procedure [us]. It does not include RX ramp-up time.
 
 /**
@@ -191,31 +196,22 @@ static void dly_op_state_set(rsch_dly_ts_id_t       dly_ts_id,
 /**
  * Start delayed operation.
  *
- * @param[in]  t0      Base time of the timestamp of the timeslot start [us].
- * @param[in]  dt      Time delta between @p t0 and the timestamp of the timeslot start [us].
- * @param[in]  length  Requested radio timeslot length [us].
- * @param[in]  dly_ts  Delayed timeslot ID.
+ * @param[in]  p_dly_ts_param  Parameters of the requested delayed timeslot.
  */
-static bool dly_op_request(uint32_t         t0,
-                           uint32_t         dt,
-                           uint32_t         length,
-                           rsch_dly_ts_id_t dly_ts_id)
+static bool dly_op_request(const rsch_dly_ts_param_t * p_dly_ts_param)
 {
-    bool result;
-
     // Set PENDING state before timeslot request, in case timeslot starts
-    // immediatly and interrupts current function execution.
-    dly_op_state_set(dly_ts_id, DELAYED_TRX_OP_STATE_STOPPED, DELAYED_TRX_OP_STATE_PENDING);
+    // immediately and interrupts current function execution.
+    dly_op_state_set(p_dly_ts_param->id, DELAYED_TRX_OP_STATE_STOPPED,
+                     DELAYED_TRX_OP_STATE_PENDING);
 
-    result = nrf_802154_rsch_delayed_timeslot_request(t0,
-                                                      dt,
-                                                      length,
-                                                      RSCH_PRIO_MAX,
-                                                      dly_ts_id);
+    bool result = nrf_802154_rsch_delayed_timeslot_request(p_dly_ts_param);
 
     if (!result)
     {
-        dly_op_state_set(dly_ts_id, DELAYED_TRX_OP_STATE_PENDING, DELAYED_TRX_OP_STATE_STOPPED);
+        dly_op_state_set(p_dly_ts_param->id,
+                         DELAYED_TRX_OP_STATE_PENDING,
+                         DELAYED_TRX_OP_STATE_STOPPED);
     }
 
     return result;
@@ -230,7 +226,7 @@ static void notify_rx_timeout(void * p_context)
 {
     (void)p_context;
 
-    nrf_802154_log(EVENT_TRACE_ENTER, FUNCTION_DTRX_RX_TIMEOUT);
+    nrf_802154_log_function_enter(NRF_802154_LOG_VERBOSITY_LOW);
 
     assert(dly_op_state_get(RSCH_DLY_RX) != DELAYED_TRX_OP_STATE_PENDING);
 
@@ -267,7 +263,7 @@ static void notify_rx_timeout(void * p_context)
         }
     }
 
-    nrf_802154_log(EVENT_TRACE_EXIT, FUNCTION_DTRX_RX_TIMEOUT);
+    nrf_802154_log_function_exit(NRF_802154_LOG_VERBOSITY_LOW);
 }
 
 /**
@@ -275,7 +271,7 @@ static void notify_rx_timeout(void * p_context)
  *
  * @param[in]  result  Result of TX request.
  */
-static void tx_timeslot_started_callback(bool result)
+static void dly_tx_result_notify(bool result)
 {
     (void)result;
 
@@ -295,7 +291,7 @@ static void tx_timeslot_started_callback(bool result)
  *
  * @param[in]  result  Result of RX request.
  */
-static void rx_timeslot_started_callback(bool result)
+static void dly_rx_result_notify(bool result)
 {
     if (result)
     {
@@ -321,51 +317,91 @@ static void rx_timeslot_started_callback(bool result)
 }
 
 /**
- * Handle TX timeslot start.
+ * Notify that the previously requested delayed TX timeslot has started just now.
+ *
+ * @param[in]  dly_ts_id  ID of the started timeslot.
  */
-static void tx_timeslot_started_callout(void)
+static void tx_timeslot_started_callback(rsch_dly_ts_id_t dly_ts_id)
 {
-    bool result;
+    nrf_802154_log_function_enter(NRF_802154_LOG_VERBOSITY_HIGH);
 
-    nrf_802154_pib_channel_set(m_tx_channel);
-    result = nrf_802154_request_channel_update();
+    assert(dly_ts_id == RSCH_DLY_TX);
 
-    if (result)
+    switch (dly_op_state_get(dly_ts_id))
     {
-        (void)nrf_802154_request_transmit(NRF_802154_TERM_802154,
-                                          REQ_ORIG_DELAYED_TRX,
-                                          mp_tx_data,
-                                          m_tx_cca,
-                                          true,
-                                          tx_timeslot_started_callback);
+        case DELAYED_TRX_OP_STATE_PENDING:
+        {
+            nrf_802154_pib_channel_set(m_tx_channel);
+
+            if (nrf_802154_request_channel_update())
+            {
+                (void)nrf_802154_request_transmit(NRF_802154_TERM_802154,
+                                                  REQ_ORIG_DELAYED_TRX,
+                                                  mp_tx_data,
+                                                  m_tx_cca,
+                                                  true,
+                                                  dly_tx_result_notify);
+            }
+            else
+            {
+                dly_tx_result_notify(false);
+            }
+
+            break;
+        }
+
+        case DELAYED_TRX_OP_STATE_STOPPED:
+            break;
+
+        default:
+            assert(false);
+            break;
     }
-    else
-    {
-        tx_timeslot_started_callback(result);
-    }
+
+    nrf_802154_log_function_exit(NRF_802154_LOG_VERBOSITY_HIGH);
 }
 
 /**
- * Handle RX timeslot start.
+ * Notify that the previously requested delayed RX timeslot has started just now.
+ *
+ * @param[in]  dly_ts_id  ID of the started timeslot.
  */
-static void rx_timeslot_started_callout(void)
+static void rx_timeslot_started_callback(rsch_dly_ts_id_t dly_ts_id)
 {
-    bool result;
+    nrf_802154_log_function_enter(NRF_802154_LOG_VERBOSITY_HIGH);
 
-    nrf_802154_pib_channel_set(m_rx_channel);
-    result = nrf_802154_request_channel_update();
+    assert(dly_ts_id == RSCH_DLY_RX);
 
-    if (result)
+    switch (dly_op_state_get(dly_ts_id))
     {
-        (void)nrf_802154_request_receive(NRF_802154_TERM_802154,
-                                         REQ_ORIG_DELAYED_TRX,
-                                         rx_timeslot_started_callback,
-                                         true);
+        case DELAYED_TRX_OP_STATE_PENDING:
+        {
+            nrf_802154_pib_channel_set(m_rx_channel);
+
+            if (nrf_802154_request_channel_update())
+            {
+                (void)nrf_802154_request_receive(NRF_802154_TERM_802154,
+                                                 REQ_ORIG_DELAYED_TRX,
+                                                 dly_rx_result_notify,
+                                                 true);
+            }
+            else
+            {
+                dly_rx_result_notify(false);
+            }
+
+            break;
+        }
+
+        case DELAYED_TRX_OP_STATE_STOPPED:
+            break;
+
+        default:
+            assert(false);
+            break;
     }
-    else
-    {
-        rx_timeslot_started_callback(result);
-    }
+
+    nrf_802154_log_function_exit(NRF_802154_LOG_VERBOSITY_HIGH);
 }
 
 bool nrf_802154_delayed_trx_transmit(const uint8_t * p_data,
@@ -374,11 +410,7 @@ bool nrf_802154_delayed_trx_transmit(const uint8_t * p_data,
                                      uint32_t        dt,
                                      uint8_t         channel)
 {
-    bool     result;
-    uint16_t timeslot_length;
-    bool     ack;
-
-    result = dly_op_state_get(RSCH_DLY_TX) == DELAYED_TRX_OP_STATE_STOPPED;
+    bool result = dly_op_state_get(RSCH_DLY_TX) == DELAYED_TRX_OP_STATE_STOPPED;
 
     if (result)
     {
@@ -390,14 +422,21 @@ bool nrf_802154_delayed_trx_transmit(const uint8_t * p_data,
             dt -= nrf_802154_cca_before_tx_duration_get();
         }
 
-        ack             = p_data[ACK_REQUEST_OFFSET] & ACK_REQUEST_BIT;
-        timeslot_length = nrf_802154_tx_duration_get(p_data[0], cca, ack);
-
         mp_tx_data   = p_data;
         m_tx_cca     = cca;
         m_tx_channel = channel;
 
-        result = dly_op_request(t0, dt, timeslot_length, RSCH_DLY_TX);
+        rsch_dly_ts_param_t dly_ts_param =
+        {
+            .t0               = t0,
+            .dt               = dt,
+            .prio             = RSCH_PRIO_TX,
+            .id               = RSCH_DLY_TX,
+            .type             = RSCH_DLY_TS_TYPE_PRECISE,
+            .started_callback = tx_timeslot_started_callback,
+        };
+
+        result = dly_op_request(&dly_ts_param);
     }
 
     return result;
@@ -408,18 +447,12 @@ bool nrf_802154_delayed_trx_receive(uint32_t t0,
                                     uint32_t timeout,
                                     uint8_t  channel)
 {
-    bool     result;
-    uint16_t timeslot_length;
-
-    result = dly_op_state_get(RSCH_DLY_RX) == DELAYED_TRX_OP_STATE_STOPPED;
+    bool result = dly_op_state_get(RSCH_DLY_RX) == DELAYED_TRX_OP_STATE_STOPPED;
 
     if (result)
     {
-
         dt -= RX_SETUP_TIME;
         dt -= RX_RAMP_UP_TIME;
-
-        timeslot_length = timeout + nrf_802154_rx_duration_get(MAX_PACKET_SIZE, true);
 
         m_timeout_timer.dt        = timeout + RX_RAMP_UP_TIME;
         m_timeout_timer.callback  = notify_rx_timeout;
@@ -430,52 +463,26 @@ bool nrf_802154_delayed_trx_receive(uint32_t t0,
         // remove timer in case it was left after abort operation
         nrf_802154_timer_sched_remove(&m_timeout_timer, NULL);
 
-        result = dly_op_request(t0, dt, timeslot_length, RSCH_DLY_RX);
+        rsch_dly_ts_param_t dly_ts_param =
+        {
+            .t0               = t0,
+            .dt               = dt,
+            .prio             = RSCH_PRIO_IDLE_LISTENING,
+            .id               = RSCH_DLY_RX,
+            .type             = RSCH_DLY_TS_TYPE_PRECISE,
+            .started_callback = rx_timeslot_started_callback,
+        };
+
+        result = dly_op_request(&dly_ts_param);
     }
 
     return result;
 }
 
-static inline void timeslot_started_callout(rsch_dly_ts_id_t dly_ts_id)
-{
-    switch (dly_ts_id)
-    {
-        case RSCH_DLY_TX:
-            tx_timeslot_started_callout();
-            break;
-
-        case RSCH_DLY_RX:
-            rx_timeslot_started_callout();
-            break;
-
-        default:
-            assert(false);
-            break;
-    }
-}
-
-void nrf_802154_rsch_delayed_timeslot_started(rsch_dly_ts_id_t dly_ts_id)
-{
-    switch (dly_op_state_get(dly_ts_id))
-    {
-        case DELAYED_TRX_OP_STATE_PENDING:
-            timeslot_started_callout(dly_ts_id);
-            break;
-
-        case DELAYED_TRX_OP_STATE_STOPPED:
-            /* Intentionally do nothing */
-            break;
-
-        default:
-            assert(false);
-    }
-}
-
 bool nrf_802154_delayed_trx_transmit_cancel(void)
 {
-    bool result;
+    bool result = nrf_802154_rsch_delayed_timeslot_cancel(RSCH_DLY_TX);
 
-    result                      = nrf_802154_rsch_delayed_timeslot_cancel(RSCH_DLY_TX);
     m_dly_op_state[RSCH_DLY_TX] = DELAYED_TRX_OP_STATE_STOPPED;
 
     return result;
@@ -483,10 +490,7 @@ bool nrf_802154_delayed_trx_transmit_cancel(void)
 
 bool nrf_802154_delayed_trx_receive_cancel(void)
 {
-    bool result;
-
-    result = nrf_802154_rsch_delayed_timeslot_cancel(RSCH_DLY_RX);
-
+    bool result = nrf_802154_rsch_delayed_timeslot_cancel(RSCH_DLY_RX);
     bool was_running;
 
     nrf_802154_timer_sched_remove(&m_timeout_timer, &was_running);
@@ -537,3 +541,5 @@ void nrf_802154_delayed_trx_rx_started_hook(const uint8_t * p_frame)
         m_dly_rx_frame.ack_requested = nrf_802154_frame_parser_ar_bit_is_set(p_frame);
     }
 }
+
+#endif // NRF_802154_DELAYED_TRX_ENABLED
