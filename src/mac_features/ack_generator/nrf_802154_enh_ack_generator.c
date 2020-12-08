@@ -1,31 +1,32 @@
-/* Copyright (c) 2018, Nordic Semiconductor ASA
+/*
+ * Copyright (c) 2018 - 2020, Nordic Semiconductor ASA
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
  *
- *   1. Redistributions of source code must retain the above copyright notice, this
- *      list of conditions and the following disclaimer.
+ * 1. Redistributions of source code must retain the above copyright notice, this
+ *    list of conditions and the following disclaimer.
  *
- *   2. Redistributions in binary form must reproduce the above copyright notice,
- *      this list of conditions and the following disclaimer in the documentation
- *      and/or other materials provided with the distribution.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
  *
- *   3. Neither the name of Nordic Semiconductor ASA nor the names of its
- *      contributors may be used to endorse or promote products derived from
- *      this software without specific prior written permission.
+ * 3. Neither the name of the copyright holder nor the names of its
+ *    contributors may be used to endorse or promote products derived from this
+ *    software without specific prior written permission.
  *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
  * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
- * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
- * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
- * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
- * CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
- * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
- * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- *
+ * IMPLIED WARRANTIES OF MERCHANTABILITY, AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ * POSSIBILITY OF SUCH DAMAGE.
  */
 
 /**
@@ -100,7 +101,7 @@ static void fcf_sequence_number_suppression_set(const uint8_t * p_frame)
     }
 }
 
-static void fcf_ie_present_set(const uint8_t * p_frame, const uint8_t * p_ie_data)
+static void fcf_ie_present_set(const uint8_t * p_ie_data)
 {
     if (p_ie_data != NULL)
     {
@@ -124,7 +125,7 @@ static void fcf_dst_addressing_mode_set(const uint8_t * p_frame)
     }
 }
 
-static void fcf_src_addressing_mode_set(const uint8_t * p_frame)
+static void fcf_src_addressing_mode_set(void)
 {
     m_ack_data[SRC_ADDR_TYPE_OFFSET] |= SRC_ADDR_TYPE_NONE;
 }
@@ -145,10 +146,10 @@ static void frame_control_set(const uint8_t                      * p_frame,
     fcf_frame_pending_set(p_frame);
     fcf_panid_compression_set(p_frame);
     fcf_sequence_number_suppression_set(p_frame);
-    fcf_ie_present_set(p_frame, p_ie_data);
+    fcf_ie_present_set(p_ie_data);
     fcf_dst_addressing_mode_set(p_frame);
     fcf_frame_version_set();
-    fcf_src_addressing_mode_set(p_frame);
+    fcf_src_addressing_mode_set();
 
     parse_results = nrf_802154_frame_parser_mhr_parse(m_ack_data, p_ack_offsets);
     assert(parse_results);
@@ -195,7 +196,7 @@ static void destination_set(const nrf_802154_frame_parser_mhr_data_t * p_frame,
     }
 }
 
-static void source_set(const uint8_t * p_frame)
+static void source_set(void)
 {
     // Intentionally empty: source address type is None.
 }
@@ -367,7 +368,7 @@ const uint8_t * nrf_802154_enh_ack_generator_create(const uint8_t * p_frame)
     destination_set(&frame_offsets, &ack_offsets);
 
     // Set source address and PAN ID.
-    source_set(p_frame);
+    source_set();
 
     // Set auxiliary security header.
     security_header_set(&frame_offsets, &ack_offsets, &p_sec_end);

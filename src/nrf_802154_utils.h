@@ -1,31 +1,32 @@
-/* Copyright (c) 2018, Nordic Semiconductor ASA
+/*
+ * Copyright (c) 2017 - 2020, Nordic Semiconductor ASA
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
  *
- *   1. Redistributions of source code must retain the above copyright notice, this
- *      list of conditions and the following disclaimer.
+ * 1. Redistributions of source code must retain the above copyright notice, this
+ *    list of conditions and the following disclaimer.
  *
- *   2. Redistributions in binary form must reproduce the above copyright notice,
- *      this list of conditions and the following disclaimer in the documentation
- *      and/or other materials provided with the distribution.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
  *
- *   3. Neither the name of Nordic Semiconductor ASA nor the names of its
- *      contributors may be used to endorse or promote products derived from
- *      this software without specific prior written permission.
+ * 3. Neither the name of the copyright holder nor the names of its
+ *    contributors may be used to endorse or promote products derived from this
+ *    software without specific prior written permission.
  *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
  * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
- * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
- * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
- * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
- * CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
- * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
- * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- *
+ * IMPLIED WARRANTIES OF MERCHANTABILITY, AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ * POSSIBILITY OF SUCH DAMAGE.
  */
 
 #ifndef NRF_802154_UTILS_H__
@@ -34,6 +35,8 @@
 #include <assert.h>
 #include <stdint.h>
 #include "nrf.h"
+#include <nrfx.h>
+#include <soc/nrfx_coredep.h>
 
 /**
  * @defgroup nrf_802154_utils Utils definitions used in the 802.15.4 driver
@@ -67,10 +70,60 @@
  *
  * @param[in] X   Array.
  */
-#define NUMELTS(X)             (sizeof((X)) / sizeof(X[0]))
+#define NUMELTS(X)                      (sizeof((X)) / sizeof(X[0]))
 
 /**@brief Wait procedure used in a busy loop. */
-#define nrf_802154_busy_wait() __WFE()
+#define nrf_802154_busy_wait()          __WFE()
+
+/**@brief Active waiting for given number of microseconds.
+ *
+ * It is guaranteed that execution of this macro will take at least @c time_in_us
+ * number of microseconds.
+ */
+#define nrf_802154_delay_us(time_in_us) nrfx_coredep_delay_us(time_in_us)
+
+/**@brief Type holding MCU critical section state.
+ *
+ * Variable of this type is required to hold state saved by @ref nrf_802154_mcu_critical_enter
+ * and restored by @ref nrf_802154_mcu_critical_exit.
+ */
+typedef uint32_t nrf_802154_mcu_critical_state_t;
+
+/**@brief Enters critical section on MCU level.
+ *
+ * Use @ref nrf_802154_mcu_critical_exit complementary. Consider following code:
+ * @code
+ * nrf_802154_mcu_critical_state_t mcu_cs;
+ * nrf_802154_mcu_critical_enter(mcu_cs);
+ * // do your critical stuff as fast as possible
+ * nrf_802154_mcu_critical_exit(mcu_cs);
+ * @endcode
+ *
+ * @param mcu_critical_state    Variable of @ref nrf_802154_mcu_critical_state_t where current
+ *                              state of MCU level critical section will be stored.
+ */
+#define nrf_802154_mcu_critical_enter(mcu_critical_state) \
+    do                                                    \
+    {                                                     \
+        (mcu_critical_state) = __get_PRIMASK();           \
+        __disable_irq();                                  \
+    }                                                     \
+    while (0)
+
+/**@brief Exits critical section on MCU level.
+ *
+ * This shall be used complementary to @ref nrf_802154_mcu_critical_enter.
+ *
+ * @param mcu_critical_state    Variable of @ref nrf_802154_mcu_critical_state_t where
+ *                              state of MCU level critical section is stored by
+ *                              former call to @ref nrf_802154_mcu_critical_enter
+ */
+#define nrf_802154_mcu_critical_exit(mcu_critical_state) \
+    do                                                   \
+    {                                                    \
+        __set_PRIMASK(mcu_critical_state);               \
+    }                                                    \
+    while (0)
 
 static inline uint64_t NRF_802154_US_TO_RTC_TICKS(uint64_t time)
 {

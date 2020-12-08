@@ -1,31 +1,32 @@
-/* Copyright (c) 2017 - 2018, Nordic Semiconductor ASA
+/*
+ * Copyright (c) 2017 - 2020, Nordic Semiconductor ASA
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
  *
- *   1. Redistributions of source code must retain the above copyright notice, this
- *      list of conditions and the following disclaimer.
+ * 1. Redistributions of source code must retain the above copyright notice, this
+ *    list of conditions and the following disclaimer.
  *
- *   2. Redistributions in binary form must reproduce the above copyright notice,
- *      this list of conditions and the following disclaimer in the documentation
- *      and/or other materials provided with the distribution.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
  *
- *   3. Neither the name of Nordic Semiconductor ASA nor the names of its
- *      contributors may be used to endorse or promote products derived from
- *      this software without specific prior written permission.
+ * 3. Neither the name of the copyright holder nor the names of its
+ *    contributors may be used to endorse or promote products derived from this
+ *    software without specific prior written permission.
  *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
  * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
- * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
- * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
- * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
- * CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
- * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
- * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- *
+ * IMPLIED WARRANTIES OF MERCHANTABILITY, AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ * POSSIBILITY OF SUCH DAMAGE.
  */
 
 /**
@@ -43,11 +44,7 @@
 #include "nrf_802154_config.h"
 #include "nrf_802154_types.h"
 
-#include "nrf_ppi.h"
-
-#if ENABLE_FEM
-#include "fem/nrf_fem_protocol_api.h"
-#endif
+#include "nrf_802154_sl_ant_div.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -64,6 +61,7 @@ extern "C" {
  * This function initializes the RADIO peripheral in the @ref RADIO_STATE_SLEEP state.
  *
  * @note This function is to be called once, before any other functions from this module.
+ *       Only the functions setting the configuration can be called before this call.
  */
 void nrf_802154_init(void);
 
@@ -87,6 +85,20 @@ void nrf_802154_deinit(void);
  */
 void nrf_802154_radio_irq_handler(void);
 #endif // !NRF_802154_INTERNAL_RADIO_IRQ_HANDLING
+
+#if !NRF_802154_INTERNAL_SWI_IRQ_HANDLING
+/**
+ * @brief Handles the interrupt request from the RADIO peripheral.
+ *
+ * @note If NRF_802154_INTERNAL_SWI_IRQ_HANDLING is enabled, the driver internally handles the
+ *       SWI IRQ, and this function must not be called.
+ *
+ * This function is intended for use in an operating system environment, where the OS handles IRQ
+ * and indirectly passes it to the driver, or with a RAAL implementation that indirectly passes
+ * radio IRQ to the driver (that is, SoftDevice).
+ */
+void nrf_802154_swi_irq_handler(void);
+#endif // !NRF_802154_INTERNAL_SWI_IRQ_HANDLING
 
 /**
  * @brief Sets the channel on which the radio is to operate.
@@ -119,60 +131,177 @@ void nrf_802154_tx_power_set(int8_t power);
  */
 int8_t nrf_802154_tx_power_get(void);
 
-#if ENABLE_FEM
+/**
+ * @brief Sets the antenna diversity rx mode.
+ *
+ * @note This function should not be called while reception or transmission are currently ongoing.
+ *
+ * @param[in] mode Antenna diversity rx mode to be set.
+ *
+ * @retval true  Antenna diversity rx mode set successfully.
+ * @retval false Invalid mode passed as argument.
+ */
+bool nrf_802154_antenna_diversity_rx_mode_set(nrf_802154_sl_ant_div_mode_t mode);
 
 /**
- * @defgroup nrf_802154_frontend Frontend Module management
- * @{
+ * @brief Gets current antenna diversity rx mode.
+ *
+ * @return Current antenna diversity mode for rx.
  */
-
-/** Structure that contains the run-time configuration of the Frontend Module. */
-typedef nrf_fem_control_cfg_t nrf_802154_fem_control_cfg_t;
-
-/** Macro with the default configuration of the Frontend Module. */
-#define NRF_802154_FEM_DEFAULT_SETTINGS                                 \
-    ((nrf_802154_fem_control_cfg_t) {                                   \
-        .pa_cfg = {                                                     \
-            .enable = 1,                                                \
-            .active_high = 1,                                           \
-            .gpio_pin = NRF_FEM_CONTROL_DEFAULT_PA_PIN,                 \
-        },                                                              \
-        .lna_cfg = {                                                    \
-            .enable = 1,                                                \
-            .active_high = 1,                                           \
-            .gpio_pin = NRF_FEM_CONTROL_DEFAULT_LNA_PIN,                \
-        },                                                              \
-        .pa_gpiote_ch_id = NRF_FEM_CONTROL_DEFAULT_PA_GPIOTE_CHANNEL,   \
-        .lna_gpiote_ch_id = NRF_FEM_CONTROL_DEFAULT_LNA_GPIOTE_CHANNEL, \
-        .ppi_ch_id_set = NRF_FEM_CONTROL_DEFAULT_SET_PPI_CHANNEL,       \
-        .ppi_ch_id_clr = NRF_FEM_CONTROL_DEFAULT_CLR_PPI_CHANNEL,       \
-    })
+nrf_802154_sl_ant_div_mode_t nrf_802154_antenna_diversity_rx_mode_get(void);
 
 /**
- * @brief Sets the PA & LNA GPIO toggle configuration.
+ * @brief Sets the antenna diversity tx mode.
  *
- * @note This function must not be called when the radio is in use.
+ * @note This function should not be called while reception or transmission are currently ongoing.
+ * @note NRF_802154_SL_ANT_DIV_MODE_AUTO is not supported for transmission.
  *
- * @note This function is deprecated. Only to be used with Skyworks module.
- *       Consider using nrf_fem_interface_configuration_set instead.
+ * @param[in] mode Antenna diversity tx mode to be set.
  *
- * @param[in] p_cfg Pointer to the PA & LNA GPIO toggle configuration.
- *
+ * @retval true  Antenna diversity tx mode set successfully.
+ * @retval false Invalid mode passed as argument.
  */
-void nrf_802154_fem_control_cfg_set(nrf_802154_fem_control_cfg_t const * const p_cfg);
+bool nrf_802154_antenna_diversity_tx_mode_set(nrf_802154_sl_ant_div_mode_t mode);
 
 /**
- * @brief Get the PA & LNA GPIO toggle configuration.
+ * @brief Gets current antenna diversity tx mode.
  *
- * @param[out] p_cfg Pointer to the structure for the PA & LNA GPIO toggle configuration.
- *
- * @note This function is deprecated. Only to be used with Skyworks module.
- *       Consider using nrf_fem_interface_configuration_get instead.
- *
+ * @return Current antenna diversity mode for tx.
  */
-void nrf_802154_fem_control_cfg_get(nrf_802154_fem_control_cfg_t * p_cfg);
+nrf_802154_sl_ant_div_mode_t nrf_802154_antenna_diversity_tx_mode_get(void);
 
-#endif // ENABLE_FEM
+/**
+ * @brief Manually selects the antenna to be used for rx.
+ *
+ * For antenna to be switched, antenna diversity rx mode needs
+ * to be @ref NRF_802154_SL_ANT_DIV_MODE_MANUAL. Otherwise, antenna will
+ * be only switched after @ref NRF_802154_SL_ANT_DIV_MODE_MANUAL is set.
+ *
+ * @param[in] antenna Antenna to be used.
+ *
+ * @retval true  Antenna set successfully.
+ * @retval false Invalid antenna passed as argument.
+ */
+bool nrf_802154_antenna_diversity_rx_antenna_set(nrf_802154_sl_ant_div_antenna_t antenna);
+
+/**
+ * @brief Gets antenna currently used for rx.
+ *
+ * @note The antenna read by this function is currently used rx antenna only if
+ * antenna diversity rx mode is set to @ref NRF_802154_SL_ANT_DIV_MODE_MANUAL. Otherwise,
+ * currently used antenna may be different.
+ * @sa nrf_802154_sl_ant_div_mode_set
+ *
+ * @return Currently used antenna.
+ */
+nrf_802154_sl_ant_div_antenna_t nrf_802154_antenna_diversity_rx_antenna_get(void);
+
+/**
+ * @brief Manually selects the antenna to be used for tx.
+ *
+ * For antenna to be switched, antenna diversity tx mode needs
+ * to be @ref NRF_802154_SL_ANT_DIV_MODE_MANUAL. Otherwise, antenna will
+ * be only switched after @ref NRF_802154_SL_ANT_DIV_MODE_MANUAL is set.
+ *
+ * @param[in] antenna Antenna to be used.
+ *
+ * @retval true  Antenna set successfully.
+ * @retval false Invalid antenna passed as argument.
+ */
+bool nrf_802154_antenna_diversity_tx_antenna_set(nrf_802154_sl_ant_div_antenna_t antenna);
+
+/**
+ * @brief Gets antenna currently used for tx.
+ *
+ * @note The antenna read by this function is currently used tx antenna only if
+ * antenna diversity tx mode is set to @ref NRF_802154_SL_ANT_DIV_MODE_MANUAL. Otherwise,
+ * currently used antenna may be different.
+ * @sa nrf_802154_sl_ant_div_mode_set
+ *
+ * @return Currently used antenna.
+ */
+nrf_802154_sl_ant_div_antenna_t nrf_802154_antenna_diversity_tx_antenna_get(void);
+
+/**
+ * @brief Gets which antenna was selected as best for the last reception.
+ *
+ * @note In three cases @ref NRF_802154_SL_ANT_DIV_ANTENNA_NONE may be returned:
+ *  - No frame was received yet.
+ *  - Last frame was received with antenna diversity auto mode disabled.
+ *  - RSSI measurements didn't have enough time to finish during last frame reception
+ *    and it is unspecified which antenna was selected.
+ *
+ * @return Antenna selected during last successful reception in automatic mode.
+ */
+nrf_802154_sl_ant_div_antenna_t nrf_802154_antenna_diversity_last_rx_best_antenna_get(void);
+
+/**
+ * @brief Sets antenna diversity configuration.
+ *
+ * @note If antenna diversity feature is to be used, this function must be called before
+ * @ref nrf_802154_antenna_diversity_init.
+ *
+ * @note This function must be called only once.
+ *
+ * @param[in] p_cfg Pointer to antenna diversity interface configuration.
+ */
+void nrf_802154_antenna_diversity_config_set(const nrf_802154_sl_ant_div_cfg_t * p_cfg);
+
+/**
+ * @brief Gets the antenna diversity interface configuration.
+ *
+ * @param[out] p_cfg  Antenna diversity interface configuration.
+ *
+ * @retval true  The configuration was retrieved successfully.
+ * @retval false The configuration could not be retrieved.
+ */
+bool nrf_802154_antenna_diversity_config_get(nrf_802154_sl_ant_div_cfg_t * p_cfg);
+
+/**
+ * @brief Initializes antenna diversity module.
+ *
+ * This function should be called before starting radio operations, but at any time
+ * after driver initialization. In order for it to succeed, antenna diversity interface
+ * configuration must be provided before it's called with
+ * @ref nrf_802154_antenna_diversity_config_set. Example usage:
+ *
+ * @code
+ * nrf_802154_init();
+ *
+ * nrf_802154_sl_ant_div_cfg_t cfg =
+ * {
+ *     // Set the configuration parameters accordingly
+ * };
+ *
+ * nrf_802154_antenna_config_set(&cfg);
+ * nrf_802154_antenna_diversity_init();
+ *
+ * // At any later time
+ * nrf_802154_receive();
+ * @endcode
+ *
+ * @retval true   Initialization was successful.
+ * @retval false  Initialization could not be performed due to unconfigured interface.
+ */
+bool nrf_802154_antenna_diversity_init(void);
+
+/**
+ * @brief Handles TIMER IRQ of the antenna diversity interface.
+ *
+ * This function should be called when the timer instance provided to the antenna diversity
+ * interface reports an interrupt.
+ */
+void nrf_802154_antenna_diversity_timer_irq_handler(void);
+
+/**
+ * @brief Gets the current time.
+ *
+ * The time returned by this function is to be used to calculate timing parameters for
+ * @ref nrf_802154_transmit_at and @ref nrf_802154_receive_at functions.
+ *
+ * @returns Current time in microseconds.
+ */
+uint32_t nrf_802154_time_get(void);
 
 /**
  * @}
@@ -523,6 +652,20 @@ bool nrf_802154_cca(void);
  * @retval  false  The driver could not schedule the continuous carrier procedure.
  */
 bool nrf_802154_continuous_carrier(void);
+
+/**
+ * @brief Changes the radio state to modulated carrier.
+ *
+ * @note When the radio is emitting modulated carrier signals, it blocks all transmissions on the
+ *       selected channel. This function is to be called only during radio tests. Do not
+ *       use it during normal device operation.
+ *
+ * @param[in] p_data Pointer to a buffer to modulate the carrier with.
+ *
+ * @retval  true   The modulated carrier procedure was scheduled.
+ * @retval  false  The driver could not schedule the modulated carrier procedure.
+ */
+bool nrf_802154_modulated_carrier(const uint8_t * p_data);
 
 /**
  * @}
@@ -1036,11 +1179,11 @@ void nrf_802154_src_addr_matching_method_set(nrf_802154_src_addr_match_t match_m
  * @retval True   Address successfully added to the list.
  * @retval False  Not enough memory to store this address in the list.
  */
-bool nrf_802154_ack_data_set(const uint8_t * p_addr,
-                             bool            extended,
-                             const void    * p_data,
-                             uint16_t        length,
-                             uint8_t         data_type);
+bool nrf_802154_ack_data_set(const uint8_t       * p_addr,
+                             bool                  extended,
+                             const void          * p_data,
+                             uint16_t              length,
+                             nrf_802154_ack_data_t data_type);
 
 /**
  * @brief Removes the address of a peer node for which the ACK data is set from the pending bit list.
@@ -1063,7 +1206,9 @@ bool nrf_802154_ack_data_set(const uint8_t * p_addr,
  * @retval True   Address removed from the list.
  * @retval False  Address not found in the list.
  */
-bool nrf_802154_ack_data_clear(const uint8_t * p_addr, bool extended, uint8_t data_type);
+bool nrf_802154_ack_data_clear(const uint8_t       * p_addr,
+                               bool                  extended,
+                               nrf_802154_ack_data_t data_type);
 
 /**
  * @brief Enables or disables setting a pending bit in automatically transmitted ACK frames.
@@ -1214,6 +1359,57 @@ void nrf_802154_transmit_csma_ca_raw(const uint8_t * p_data);
 void nrf_802154_transmit_csma_ca(const uint8_t * p_data, uint8_t length);
 
 #endif // NRF_802154_USE_RAW_API
+
+/**
+ * @brief Sets the minimum value of the backoff exponent (BE) in the CSMA-CA algorithm.
+ *
+ * @param[in] min_be  Minimum value of the backoff exponent.
+ *
+ * @retval true   When value provided by @p min_be has been set successfully.
+ * @retval false  Otherwise.
+ */
+bool nrf_802154_csma_ca_min_be_set(uint8_t min_be);
+
+/**
+ * @brief Gets the minimum value of the backoff exponent (BE) in the CSMA-CA algorithm.
+ *
+ * @return Current minimum value of the backoff exponent.
+ */
+uint8_t nrf_802154_csma_ca_min_be_get(void);
+
+/**
+ * @brief Sets the maximum value of the backoff exponent (BE) in the CSMA-CA algorithm.
+ *
+ * @param[in] max_be  Maximum value of the backoff exponent.
+ *
+ * @retval true   When value provided by @p max_be has been set successfully.
+ * @retval false  Otherwise.
+ */
+bool nrf_802154_csma_ca_max_be_set(uint8_t max_be);
+
+/**
+ * @brief Gets the maximum value of the backoff exponent (BE) in the CSMA-CA algorithm.
+ *
+ * @return Current maximum value of the backoff exponent.
+ */
+uint8_t nrf_802154_csma_ca_max_be_get(void);
+
+/**
+ * @brief Sets the maximum number of backoffs the CSMA-CA algorithm will attempt before declaring
+ *        a channel access failure.
+ *
+ * @param[in] max_backoffs  Maximum number of backoffs.
+ */
+void nrf_802154_csma_ca_max_backoffs_set(uint8_t max_backoffs);
+
+/**
+ * @brief Gets the maximum number of backoffs the CSMA-CA algorithm will attempt before declaring
+ *        a channel access failure.
+ *
+ * @return Current maximum number of backoffs.
+ */
+uint8_t nrf_802154_csma_ca_max_backoffs_get(void);
+
 #endif // NRF_802154_CSMA_CA_ENABLED
 
 /**
@@ -1234,6 +1430,194 @@ void nrf_802154_transmit_csma_ca(const uint8_t * p_data, uint8_t length);
 void nrf_802154_ack_timeout_set(uint32_t time);
 
 #endif // NRF_802154_ACK_TIMEOUT_ENABLED
+
+/**
+ * @}
+ * @defgroup nrf_802154_coex Wifi Coex feature
+ * @{
+ */
+
+/**
+ * @brief Enables wifi coex signaling.
+ *
+ * When @ref nrf_802154_init is called, the wifi coex signaling is initially enabled or disabled
+ * depending on @ref NRF_802154_COEX_INITIALLY_ENABLED. You can call this function
+ * (after @ref nrf_802154_init) to enable the wifi coex signaling. When wifi coex signaling
+ * has been already enabled, this function has no effect.
+ *
+ * When this function is called during receive or transmit operation, the effect on coex interface
+ * may be delayed until current frame (or ack) is received or transmitted.
+ * To avoid this issue please call this function when the driver is in sleep mode.
+ *
+ * @retval true     Wifi coex is supported and is enabled after call to this function.
+ * @retval false    Wifi coex is not supported.
+ */
+bool nrf_802154_wifi_coex_enable(void);
+
+/**
+ * @brief Disables wifi coex signaling.
+ *
+ * You can call this function (after @ref nrf_802154_init) to disable the wifi coex signaling.
+ * When wifi coex signaling has been already disabled, this function has no effect.
+ *
+ * When this function is called during receive or transmit operation, the effect on coex interface
+ * may be delayed until current frame (or ack) is received or transmitted.
+ * To avoid this issue please call this function when the driver is in sleep mode.
+ */
+void nrf_802154_wifi_coex_disable(void);
+
+/**
+ * @brief Checks if wifi coex signaling is enabled.
+ *
+ * @retval true     Wifi coex signaling is enabled.
+ * @retval false    Wifi coex signaling is disabled.
+ */
+bool nrf_802154_wifi_coex_is_enabled(void);
+
+/**
+ * @brief Sets Coex request mode used in receive operations.
+ *
+ * @param[in] mode  Coex receive request mode. For allowed values see @ref nrf_802154_coex_rx_request_mode_t type.
+ *
+ * @retval true     Operation succeeded.
+ * @retval false    Requested mode is not supported.
+ */
+bool nrf_802154_coex_rx_request_mode_set(nrf_802154_coex_rx_request_mode_t mode);
+
+/**
+ * @brief Gets Coex request mode used in receive operations.
+ *
+ * @return Current Coex receive request mode. For allowed values see @ref nrf_802154_coex_rx_request_mode_t type.
+ */
+nrf_802154_coex_rx_request_mode_t nrf_802154_coex_rx_request_mode_get(void);
+
+/**
+ * @brief Sets Coex request mode used in transmit operations.
+ *
+ * @param[in] mode  Coex transmit request mode. For allowed values see @ref nrf_802154_coex_tx_request_mode_t type.
+ *
+ * @retval true     Operation succeeded.
+ * @retval false    Requested mode is not supported.
+ */
+bool nrf_802154_coex_tx_request_mode_set(nrf_802154_coex_tx_request_mode_t mode);
+
+/**
+ * @brief Gets Coex request mode used in transmit operations.
+ *
+ * @return Current Coex transmit request mode. For allowed values see @ref nrf_802154_coex_tx_request_mode_t type.
+ */
+nrf_802154_coex_tx_request_mode_t nrf_802154_coex_tx_request_mode_get(void);
+
+/**
+ * @}
+ * @defgroup nrf_802154_stats Statistics and measurements
+ * @{
+ */
+
+/**
+ * @brief Gets current statistics.
+ *
+ * @param[out] p_stats    Structure that will be filled with current stats values.
+ */
+void nrf_802154_stats_get(nrf_802154_stats_t * p_stats);
+
+/**
+ * @brief Get current statistics.
+ *
+ * @note This returns part of information returned by @ref nrf_802154_stats_get
+ *
+ * @param[out] p_stat_counters    Structure that will be filled with current stats counter values.
+ */
+void nrf_802154_stat_counters_get(nrf_802154_stat_counters_t * p_stat_counters);
+
+/**
+ * @brief Decreases current statistic counter values by the provided ones.
+ *
+ * This function is intended to be called together with @ref nrf_802154_stats_get
+ * to avoid missing any counted events.
+ *
+ * @param[in] p_stat_counters Current stat counter values will be decreased by values provided
+ *                            behind this pointer.
+ */
+void nrf_802154_stat_counters_subtract(const nrf_802154_stat_counters_t * p_stat_counters);
+
+/**
+ * @brief Get time stamps of events gathered by the last operation.
+ *
+ * @param[out] p_stat_timestamps Structure that will be filled with current time stamps of events.
+ */
+void nrf_802154_stat_timestamps_get(nrf_802154_stat_timestamps_t * p_stat_timestamps);
+
+/**
+ * @brief Resets current stat counters to 0.
+ *
+ * @note @ref nrf_802154_stat_counters_get and @ref nrf_802154_stat_counters_reset may lead to
+ * missing events if an counted event occurs between these calls. Use
+ * @ref nrf_802154_stat_counters_subtract to avoid such condition if necessary.
+ */
+void nrf_802154_stat_counters_reset(void);
+
+/**
+ * @brief Get total times spent in certain states.
+ *
+ * @param[out] p_stat_totals Structure that will be filled with times spent in certain states
+ *                           until now.
+ */
+void nrf_802154_stat_totals_get(nrf_802154_stat_totals_t * p_stat_totals);
+
+/**
+ * @}
+ * @defgroup nrf_802154_ifs Inter-frame spacing feature
+ * @{
+ */
+#if NRF_802154_IFS_ENABLED
+
+/**
+ * @brief Gets IFS operation mode.
+ *
+ * @return Current IFS operation mode. Refer to @ref nrf_802154_ifs_mode_t for details.
+ */
+nrf_802154_ifs_mode_t nrf_802154_ifs_mode_get(void);
+
+/**
+ * @brief Sets IFS operation mode.
+ *
+ * @param[in] mode  IFS operation mode. Refer to @ref nrf_802154_ifs_mode_t for details.
+ *
+ * @retval    true  The update of IFS operation mode was successful.
+ * @retval    false The update of IFS operation mode failed. Provided mode is unsupported
+ */
+bool nrf_802154_ifs_mode_set(nrf_802154_ifs_mode_t mode);
+
+/**
+ * @brief Gets Short IFS period in microseconds.
+ *
+ * @return Current Short IFS period in microseconds.
+ */
+uint16_t nrf_802154_ifs_min_sifs_period_get(void);
+
+/**
+ * @brief Sets Short IFS period in microseconds.
+ *
+ * @param[in] period Short IFS period in microseconds.
+ */
+void nrf_802154_ifs_min_sifs_period_set(uint16_t period);
+
+/**
+ * @brief Gets Long IFS period in microseconds.
+ *
+ * @return Current Long IFS period in microseconds.
+ */
+uint16_t nrf_802154_ifs_min_lifs_period_get(void);
+
+/**
+ * @brief Sets Long IFS period in microseconds.
+ *
+ * @param[in] period Long IFS period in microseconds.
+ */
+void nrf_802154_ifs_min_lifs_period_set(uint16_t period);
+
+#endif // NRF_802154_IFS_ENABLED
 
 /** @} */
 

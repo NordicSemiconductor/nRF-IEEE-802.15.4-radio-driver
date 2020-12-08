@@ -1,31 +1,32 @@
-/* Copyright (c) 2017 - 2018, Nordic Semiconductor ASA
+/*
+ * Copyright (c) 2017 - 2020, Nordic Semiconductor ASA
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
  *
- *   1. Redistributions of source code must retain the above copyright notice, this
- *      list of conditions and the following disclaimer.
+ * 1. Redistributions of source code must retain the above copyright notice, this
+ *    list of conditions and the following disclaimer.
  *
- *   2. Redistributions in binary form must reproduce the above copyright notice,
- *      this list of conditions and the following disclaimer in the documentation
- *      and/or other materials provided with the distribution.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
  *
- *   3. Neither the name of Nordic Semiconductor ASA nor the names of its
- *      contributors may be used to endorse or promote products derived from
- *      this software without specific prior written permission.
+ * 3. Neither the name of the copyright holder nor the names of its
+ *    contributors may be used to endorse or promote products derived from this
+ *    software without specific prior written permission.
  *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
  * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
- * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
- * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
- * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
- * CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
- * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
- * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- *
+ * IMPLIED WARRANTIES OF MERCHANTABILITY, AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ * POSSIBILITY OF SUCH DAMAGE.
  */
 
 #ifndef NRF_802154_CONFIG_H__
@@ -114,6 +115,26 @@ extern "C" {
 #endif // NRF_802154_INTERNAL_RADIO_IRQ_HANDLING
 
 /**
+ * @def NRF_802154_INTERNAL_SWI_IRQ_HANDLING
+ *
+ * If the driver is expected to internally handle the SWI IRQ.
+ * If the driver is used in an OS, the SWI IRQ can be handled by the OS and passed to
+ * the driver by @ref nrf_802154_swi_irq_handler.
+ * In this case, the internal handling must be disabled.
+ *
+ */
+
+#ifndef NRF_802154_INTERNAL_SWI_IRQ_HANDLING
+
+#if RAAL_SOFTDEVICE || RAAL_REM
+#define NRF_802154_INTERNAL_SWI_IRQ_HANDLING 0
+#else // RAAL_SOFTDEVICE || RAAL_REM
+#define NRF_802154_INTERNAL_SWI_IRQ_HANDLING 1
+#endif  // RAAL_SOFTDEVICE || RAAL_REM
+
+#endif // NRF_802154_INTERNAL_SWI_IRQ_HANDLING
+
+/**
  * @def NRF_802154_IRQ_PRIORITY
  *
  * Interrupt priority for RADIO peripheral.
@@ -131,7 +152,7 @@ extern "C" {
  *
  */
 #ifndef NRF_802154_SWI_PRIORITY
-#define NRF_802154_SWI_PRIORITY 5
+#define NRF_802154_SWI_PRIORITY 4
 #endif
 
 /**
@@ -185,6 +206,9 @@ extern "C" {
  * during the frame reception. With this flag set to 1, the address filtering is done after
  * receiving a frame, during NRF_RADIO_EVENT_END handling.
  *
+ * @note This option is incompatible with antenna diversity. If set to 1, antenna diversity
+ * must not be used.
+ *
  */
 #ifndef NRF_802154_DISABLE_BCC_MATCHING
 #define NRF_802154_DISABLE_BCC_MATCHING 0
@@ -208,10 +232,24 @@ extern "C" {
  * Enabling this feature enables the functions @ref nrf_802154_received_timestamp_raw,
  * @ref nrf_802154_received_timestamp, @ref nrf_802154_transmitted_timestamp_raw, and
  * @ref nrf_802154_transmitted_timestamp, which add timestamps to the frames received.
+ * This option also enables timestamping in stats.
  *
  */
 #ifndef NRF_802154_FRAME_TIMESTAMP_ENABLED
 #define NRF_802154_FRAME_TIMESTAMP_ENABLED 1
+#endif
+
+/**
+ * @def NRF_802154_TOTAL_TIMES_MEASUREMENT_ENABLED
+ *
+ * If measurement of total time spent in certain states is to be calculated.
+ *
+ * This option can be enabled when @ref NRF_802154_FRAME_TIMESTAMP_ENABLED is 1
+ * and @ref NRF_802154_DISABLE_BCC_MATCHING is 0.
+ */
+#ifndef NRF_802154_TOTAL_TIMES_MEASUREMENT_ENABLED
+#define NRF_802154_TOTAL_TIMES_MEASUREMENT_ENABLED \
+    (1 && NRF_802154_FRAME_TIMESTAMP_ENABLED && !NRF_802154_DISABLE_BCC_MATCHING)
 #endif
 
 /**
@@ -222,57 +260,6 @@ extern "C" {
  */
 #ifndef NRF_802154_DELAYED_TRX_ENABLED
 #define NRF_802154_DELAYED_TRX_ENABLED 1
-#endif
-
-/**
- * @}
- * @defgroup nrf_802154_config_clock Clock driver configuration
- * @{
- */
-
-/**
- * @def NRF_802154_CLOCK_IRQ_PRIORITY
- *
- * The priority of clock interrupt used in the standalone clock driver implementation.
- *
- * @note This configuration is only applicable for the Clock Abstraction Layer implementation
- *       in nrf_802154_clock_nodrv.c.
- *
- */
-#ifndef NRF_802154_CLOCK_IRQ_PRIORITY
-#define NRF_802154_CLOCK_IRQ_PRIORITY 7
-#endif
-
-/**
- * @def NRF_802154_CLOCK_LFCLK_SOURCE
- *
- * The low-frequency clock source used in the standalone clock driver implementation.
- *
- * @note This configuration is only applicable for the Clock Abstraction Layer implementation
- *       in nrf_802154_clock_nodrv.c.
- *
- */
-#ifndef NRF_802154_CLOCK_LFCLK_SOURCE
-#define NRF_802154_CLOCK_LFCLK_SOURCE NRF_CLOCK_LFCLK_Xtal
-#endif
-
-/**
- * @}
- * @defgroup nrf_802154_config_rtc RTC driver configuration
- * @{
- */
-
-/**
- * @def NRF_802154_RTC_IRQ_PRIORITY
- *
- * The priority of RTC interrupt used in the standalone timer driver implementation.
- *
- * @note This configuration is only applicable for the Low Power Timer Abstraction Layer
- *       implementation in nrf_802154_lp_timer.c.
- *
- */
-#ifndef NRF_802154_RTC_IRQ_PRIORITY
-#define NRF_802154_RTC_IRQ_PRIORITY 6
 #endif
 
 /**
@@ -293,36 +280,55 @@ extern "C" {
 #endif
 
 /**
- * @def NRF_802154_CSMA_CA_MIN_BE
+ * @def NRF_802154_CSMA_CA_MIN_BE_DEFAULT
  *
- * The minimum value of the backoff exponent (BE) in the CSMA-CA algorithm
+ * The default minimum value of the backoff exponent (BE) in the CSMA-CA algorithm
  * (see IEEE 802.15.4-2015: 6.2.5.1).
  *
+ * @note The minimum value of the backoff exponent may be changed from default by calling the
+ *       @ref nrf_802154_pib_csmaca_min_be_set function.
+ *
  */
-#ifndef NRF_802154_CSMA_CA_MIN_BE
-#define NRF_802154_CSMA_CA_MIN_BE 3
+#ifdef NRF_802154_CSMA_CA_MIN_BE
+#error "NRF_802154_CSMA_CA_MIN_BE was replaced with NRF_802154_CSMA_CA_MIN_BE_DEFAULT"
+#endif
+#ifndef NRF_802154_CSMA_CA_MIN_BE_DEFAULT
+#define NRF_802154_CSMA_CA_MIN_BE_DEFAULT 3
 #endif
 
 /**
- * @def NRF_802154_CSMA_CA_MAX_BE
+ * @def NRF_802154_CSMA_CA_MAX_BE_DEFAULT
  *
- * The maximum value of the backoff exponent, BE, in the CSMA-CA algorithm
+ * The default maximum value of the backoff exponent, BE, in the CSMA-CA algorithm
  * (see IEEE 802.15.4-2015: 6.2.5.1).
  *
+ * @note The maximum value of the backoff exponent may be changed from default by calling the
+ *       @ref nrf_802154_pib_csmaca_max_be_set function.
+ *
  */
-#ifndef NRF_802154_CSMA_CA_MAX_BE
-#define NRF_802154_CSMA_CA_MAX_BE 5
+#ifdef NRF_802154_CSMA_CA_MAX_BE
+#error "NRF_802154_CSMA_CA_MAX_BE was replaced with NRF_802154_CSMA_CA_MAX_BE_DEFAULT"
+#endif
+#ifndef NRF_802154_CSMA_CA_MAX_BE_DEFAULT
+#define NRF_802154_CSMA_CA_MAX_BE_DEFAULT 5
 #endif
 
 /**
- * @def NRF_802154_CSMA_CA_MAX_CSMA_BACKOFFS
+ * @def NRF_802154_CSMA_CA_MAX_CSMA_BACKOFFS_DEFAULT
  *
- * The maximum number of backoffs that the CSMA-CA algorithm will attempt before declaring a channel
- * access failure.
+ * The default maximum number of backoffs that the CSMA-CA algorithm will attempt before declaring
+ * a channel access failure.
+ *
+ * @note The maximum number of backoffs may be changed from default by calling the
+ *       @ref nrf_802154_pib_csmaca_max_backoffs_set function.
  *
  */
-#ifndef NRF_802154_CSMA_CA_MAX_CSMA_BACKOFFS
-#define NRF_802154_CSMA_CA_MAX_CSMA_BACKOFFS 4
+#ifdef NRF_802154_CSMA_CA_MAX_CSMA_BACKOFFS_DEFAULT
+#error \
+    "NRF_802154_CSMA_CA_MAX_CSMA_BACKOFFS was replaced with NRF_802154_CSMA_CA_MAX_CSMA_BACKOFFS_DEFAULT"
+#endif
+#ifndef NRF_802154_CSMA_CA_MAX_CSMA_BACKOFFS_DEFAULT
+#define NRF_802154_CSMA_CA_MAX_CSMA_BACKOFFS_DEFAULT 4
 #endif
 
 /**
@@ -390,6 +396,22 @@ extern "C" {
 
 /**
  * @}
+ * @defgroup nrf_802154_config_ifs Interframe spacing feature configuration
+ * @{
+ */
+
+/**
+ * @def NRF_802154_IFS_ENABLED
+ *
+ * Indicates whether the Short/Long Interframe spacing feature is to be enabled in the driver.
+ *
+ */
+#ifndef NRF_802154_IFS_ENABLED
+#define NRF_802154_IFS_ENABLED 1
+#endif
+
+/**
+ * @}
  * @defgroup nrf_802154_config_transmission Transmission start notification feature configuration
  * @{
  */
@@ -411,8 +433,51 @@ extern "C" {
 #endif // NRF_802154_TX_STARTED_NOTIFY_ENABLED
 
 /**
- *@}
- **/
+ * @}
+ * @defgroup nrf_802154_coex WiFi coexistence feature configuration
+ * @{
+ */
+
+/**
+ * @def NRF_802154_COEX_INITIALLY_ENABLED
+ *
+ * Configures if WiFi coex is initially enabled or disabled.
+ */
+#ifndef NRF_802154_COEX_INITIALLY_ENABLED
+#define NRF_802154_COEX_INITIALLY_ENABLED 1
+#endif
+
+/**
+ * @}
+ * @defgroup nrf_802154_stats Statistics configuration
+ * @{
+ */
+
+/**
+ * @def NRF_802154_STATS_COUNT_ENERGY_DETECTED_EVENTS
+ *
+ * Configures if energy detected events will be counted in receive mode.
+ * When this option is enabled additional interrupts on energy detected events will occur
+ * increasing power consumption. The events counter is stored in
+ * @ref nrf_802154_stat_counters_t::received_energy_events field and can be retrieved by
+ * a call to @ref nrf_802154_stats_get or @ref nrf_802154_stat_counters_get.
+ */
+#ifndef NRF_802154_STATS_COUNT_ENERGY_DETECTED_EVENTS
+#define NRF_802154_STATS_COUNT_ENERGY_DETECTED_EVENTS 1
+#endif
+
+/**
+ * @def NRF_802154_STATS_COUNT_RECEIVED_PREAMBLES
+ *
+ * Configures if number of received preambles will be counted in receive mode.
+ * When this option is enabled additional interrupts on preamble reveived will occur
+ * increasing power consumption. The events counter is stored in
+ * @ref nrf_802154_stat_counters_t::received_preambles field and can be retrieved by
+ * a call to @ref nrf_802154_stats_get or @ref nrf_802154_stat_counters_get.
+ */
+#ifndef NRF_802154_STATS_COUNT_RECEIVED_PREAMBLES
+#define NRF_802154_STATS_COUNT_RECEIVED_PREAMBLES 1
+#endif
 
 #ifdef __cplusplus
 }

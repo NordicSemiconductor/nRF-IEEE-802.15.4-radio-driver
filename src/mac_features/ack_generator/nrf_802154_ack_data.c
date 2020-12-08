@@ -1,31 +1,32 @@
-/* Copyright (c) 2017 - 2018, Nordic Semiconductor ASA
+/*
+ * Copyright (c) 2018 - 2020, Nordic Semiconductor ASA
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
  *
- *   1. Redistributions of source code must retain the above copyright notice, this
- *      list of conditions and the following disclaimer.
+ * 1. Redistributions of source code must retain the above copyright notice, this
+ *    list of conditions and the following disclaimer.
  *
- *   2. Redistributions in binary form must reproduce the above copyright notice,
- *      this list of conditions and the following disclaimer in the documentation
- *      and/or other materials provided with the distribution.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
  *
- *   3. Neither the name of Nordic Semiconductor ASA nor the names of its
- *      contributors may be used to endorse or promote products derived from
- *      this software without specific prior written permission.
+ * 3. Neither the name of the copyright holder nor the names of its
+ *    contributors may be used to endorse or promote products derived from this
+ *    software without specific prior written permission.
  *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
  * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
- * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
- * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
- * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
- * CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
- * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
- * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- *
+ * IMPLIED WARRANTIES OF MERCHANTABILITY, AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ * POSSIBILITY OF SUCH DAMAGE.
  */
 
 /**
@@ -199,11 +200,11 @@ static int8_t addr_compare(const uint8_t * p_first_addr,
  * @retval true   Address @p p_addr is in the list.
  * @retval false  Address @p p_addr is not in the list.
  */
-static bool addr_binary_search(const uint8_t * p_addr,
-                               const uint8_t * p_addr_array,
-                               uint32_t      * p_location,
-                               uint8_t         data_type,
-                               bool            extended)
+static bool addr_binary_search(const uint8_t       * p_addr,
+                               const uint8_t       * p_addr_array,
+                               uint32_t            * p_location,
+                               nrf_802154_ack_data_t data_type,
+                               bool                  extended)
 {
     uint32_t addr_array_len = 0;
     uint8_t  entry_size     = 0;
@@ -288,10 +289,10 @@ static bool addr_binary_search(const uint8_t * p_addr,
  * @retval true   Address @p p_addr is in the list.
  * @retval false  Address @p p_addr is not in the list.
  */
-static bool addr_index_find(const uint8_t * p_addr,
-                            uint32_t      * p_location,
-                            uint8_t         data_type,
-                            bool            extended)
+static bool addr_index_find(const uint8_t       * p_addr,
+                            uint32_t            * p_location,
+                            nrf_802154_ack_data_t data_type,
+                            bool                  extended)
 {
     uint8_t * p_addr_array;
     bool      valid_data_type = true;
@@ -431,7 +432,10 @@ static bool addr_match_standard_compliant(const uint8_t * p_frame)
  * @retval true   Address @p p_addr has been added to the list successfully.
  * @retval false  Address @p p_addr could not be added to the list.
  */
-static bool addr_add(const uint8_t * p_addr, uint32_t location, uint8_t data_type, bool extended)
+static bool addr_add(const uint8_t       * p_addr,
+                     uint32_t              location,
+                     nrf_802154_ack_data_t data_type,
+                     bool                  extended)
 {
     uint32_t * p_addr_array_len;
     uint32_t   max_addr_array_len;
@@ -508,7 +512,7 @@ static bool addr_add(const uint8_t * p_addr, uint32_t location, uint8_t data_typ
  * @retval true   Address @p p_addr has been removed from the list successfully.
  * @retval false  Address @p p_addr could not removed from the list.
  */
-static bool addr_remove(uint32_t location, uint8_t data_type, bool extended)
+static bool addr_remove(uint32_t location, nrf_802154_ack_data_t data_type, bool extended)
 {
     uint32_t * p_addr_array_len;
     uint8_t  * p_addr_array;
@@ -599,11 +603,11 @@ void nrf_802154_ack_data_enable(bool enabled)
     m_pending_bit.enabled = enabled;
 }
 
-bool nrf_802154_ack_data_for_addr_set(const uint8_t * p_addr,
-                                      bool            extended,
-                                      uint8_t         data_type,
-                                      const void    * p_data,
-                                      uint8_t         data_len)
+bool nrf_802154_ack_data_for_addr_set(const uint8_t       * p_addr,
+                                      bool                  extended,
+                                      nrf_802154_ack_data_t data_type,
+                                      const void          * p_data,
+                                      uint8_t               data_len)
 {
     uint32_t location = 0;
 
@@ -623,7 +627,9 @@ bool nrf_802154_ack_data_for_addr_set(const uint8_t * p_addr,
     }
 }
 
-bool nrf_802154_ack_data_for_addr_clear(const uint8_t * p_addr, bool extended, uint8_t data_type)
+bool nrf_802154_ack_data_for_addr_clear(const uint8_t       * p_addr,
+                                        bool                  extended,
+                                        nrf_802154_ack_data_t data_type)
 {
     uint32_t location = 0;
 
@@ -637,7 +643,7 @@ bool nrf_802154_ack_data_for_addr_clear(const uint8_t * p_addr, bool extended, u
     }
 }
 
-void nrf_802154_ack_data_reset(bool extended, uint8_t data_type)
+void nrf_802154_ack_data_reset(bool extended, nrf_802154_ack_data_t data_type)
 {
     switch (data_type)
     {
@@ -703,6 +709,7 @@ bool nrf_802154_ack_data_pending_bit_should_be_set(const uint8_t * p_frame)
             break;
 
         default:
+            ret = false;
             assert(false);
     }
 

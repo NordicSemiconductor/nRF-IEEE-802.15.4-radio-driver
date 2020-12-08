@@ -1,31 +1,32 @@
-/* Copyright (c) 2017 - 2019, Nordic Semiconductor ASA
+/*
+ * Copyright (c) 2018 - 2020, Nordic Semiconductor ASA
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
  *
- *   1. Redistributions of source code must retain the above copyright notice, this
- *      list of conditions and the following disclaimer.
+ * 1. Redistributions of source code must retain the above copyright notice, this
+ *    list of conditions and the following disclaimer.
  *
- *   2. Redistributions in binary form must reproduce the above copyright notice,
- *      this list of conditions and the following disclaimer in the documentation
- *      and/or other materials provided with the distribution.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
  *
- *   3. Neither the name of Nordic Semiconductor ASA nor the names of its
- *      contributors may be used to endorse or promote products derived from
- *      this software without specific prior written permission.
+ * 3. Neither the name of the copyright holder nor the names of its
+ *    contributors may be used to endorse or promote products derived from this
+ *    software without specific prior written permission.
  *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
  * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
- * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
- * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
- * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
- * CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
- * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
- * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- *
+ * IMPLIED WARRANTIES OF MERCHANTABILITY, AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ * POSSIBILITY OF SUCH DAMAGE.
  */
 
 /**
@@ -33,6 +34,8 @@
  *   This file implements the nrf 802.15.4 radio driver.
  *
  */
+
+#define NRF_802154_MODULE_ID NRF_802154_DRV_MODULE_ID_APPLICATION
 
 #include "nrf_802154.h"
 
@@ -48,29 +51,29 @@
 #include "nrf_802154_critical_section.h"
 #include "nrf_802154_debug.h"
 #include "nrf_802154_notification.h"
+#include "nrf_802154_nrfx_addons.h"
 #include "nrf_802154_pib.h"
-#include "nrf_802154_priority_drop.h"
 #include "nrf_802154_request.h"
 #include "nrf_802154_rssi.h"
 #include "nrf_802154_rx_buffer.h"
-#include "nrf_802154_timer_coord.h"
-#include "nrf_radio.h"
+#include "nrf_802154_stats.h"
+#include "hal/nrf_radio.h"
 #include "platform/clock/nrf_802154_clock.h"
 #include "platform/lp_timer/nrf_802154_lp_timer.h"
 #include "platform/random/nrf_802154_random.h"
 #include "platform/temperature/nrf_802154_temperature.h"
 #include "rsch/nrf_802154_rsch.h"
 #include "rsch/nrf_802154_rsch_crit_sect.h"
-#include "timer_scheduler/nrf_802154_timer_sched.h"
+#include "rsch/nrf_802154_rsch_prio_drop.h"
+#include "timer/nrf_802154_timer_coord.h"
+#include "timer/nrf_802154_timer_sched.h"
 
 #include "mac_features/nrf_802154_ack_timeout.h"
 #include "mac_features/nrf_802154_csma_ca.h"
 #include "mac_features/nrf_802154_delayed_trx.h"
 #include "mac_features/ack_generator/nrf_802154_ack_data.h"
 
-#if ENABLE_FEM
-#include "fem/nrf_fem_protocol_api.h"
-#endif
+#include "nrf_802154_sl_ant_div.h"
 
 #define RAW_LENGTH_OFFSET  0
 #define RAW_PAYLOAD_OFFSET 1
@@ -101,39 +104,6 @@ static void tx_buffer_fill(const uint8_t * p_data, uint8_t length)
 
 #endif // !NRF_802154_USE_RAW_API
 
-/**
- * @brief Get timestamp of the last received frame.
- *
- * @note This function increments the returned value by 1 us if the timestamp is equal to the
- *       @ref NRF_802154_NO_TIMESTAMP value to indicate that the timestamp is available.
- *
- * @returns Timestamp [us] of the last received frame or @ref NRF_802154_NO_TIMESTAMP if
- *          the timestamp is inaccurate.
- */
-static uint32_t last_rx_frame_timestamp_get(void)
-{
-#if NRF_802154_FRAME_TIMESTAMP_ENABLED
-    uint32_t timestamp;
-    bool     timestamp_received = nrf_802154_timer_coord_timestamp_get(&timestamp);
-
-    if (!timestamp_received)
-    {
-        timestamp = NRF_802154_NO_TIMESTAMP;
-    }
-    else
-    {
-        if (timestamp == NRF_802154_NO_TIMESTAMP)
-        {
-            timestamp++;
-        }
-    }
-
-    return timestamp;
-#else // NRF_802154_FRAME_TIMESTAMP_ENABLED
-    return NRF_802154_NO_TIMESTAMP;
-#endif  // NRF_802154_FRAME_TIMESTAMP_ENABLED
-}
-
 void nrf_802154_channel_set(uint8_t channel)
 {
     bool changed = nrf_802154_pib_channel_get() != channel;
@@ -159,6 +129,26 @@ void nrf_802154_tx_power_set(int8_t power)
 int8_t nrf_802154_tx_power_get(void)
 {
     return nrf_802154_pib_tx_power_get();
+}
+
+bool nrf_802154_coex_rx_request_mode_set(nrf_802154_coex_rx_request_mode_t mode)
+{
+    return nrf_802154_pib_coex_rx_request_mode_set(mode);
+}
+
+nrf_802154_coex_rx_request_mode_t nrf_802154_coex_rx_request_mode_get(void)
+{
+    return nrf_802154_pib_coex_rx_request_mode_get();
+}
+
+bool nrf_802154_coex_tx_request_mode_set(nrf_802154_coex_tx_request_mode_t mode)
+{
+    return nrf_802154_pib_coex_tx_request_mode_set(mode);
+}
+
+nrf_802154_coex_tx_request_mode_t nrf_802154_coex_tx_request_mode_get(void)
+{
+    return nrf_802154_pib_coex_tx_request_mode_get();
 }
 
 void nrf_802154_temperature_changed(void)
@@ -202,6 +192,12 @@ uint32_t nrf_802154_first_symbol_timestamp_get(uint32_t end_timestamp, uint8_t p
 
 void nrf_802154_init(void)
 {
+    nrf_802154_sl_crit_sect_interface_t crit_sect_int =
+    {
+        .enter = nrf_802154_critical_section_enter,
+        .exit  = nrf_802154_critical_section_exit
+    };
+
     nrf_802154_ack_data_init();
     nrf_802154_core_init();
     nrf_802154_clock_init();
@@ -210,10 +206,10 @@ void nrf_802154_init(void)
     nrf_802154_notification_init();
     nrf_802154_lp_timer_init();
     nrf_802154_pib_init();
-    nrf_802154_priority_drop_init();
+    nrf_802154_rsch_prio_drop_init();
     nrf_802154_random_init();
     nrf_802154_request_init();
-    nrf_802154_rsch_crit_sect_init();
+    nrf_802154_rsch_crit_sect_init(&crit_sect_int);
     nrf_802154_rsch_init();
     nrf_802154_rx_buffer_init();
     nrf_802154_temperature_init();
@@ -233,59 +229,116 @@ void nrf_802154_deinit(void)
     nrf_802154_core_deinit();
 }
 
-#if !NRF_802154_INTERNAL_RADIO_IRQ_HANDLING
-void nrf_802154_radio_irq_handler(void)
+bool nrf_802154_antenna_diversity_rx_mode_set(nrf_802154_sl_ant_div_mode_t mode)
 {
-    nrf_802154_core_irq_handler();
+    bool result = false;
+
+#if defined(RADIO_INTENSET_SYNC_Msk)
+    result = nrf_802154_sl_ant_div_cfg_mode_set(NRF_802154_SL_ANT_DIV_OP_RX, mode);
+#endif
+
+    if (result)
+    {
+        nrf_802154_request_antenna_update();
+    }
+
+    return result;
 }
 
-#endif // !NRF_802154_INTERNAL_RADIO_IRQ_HANDLING
-
-#if ENABLE_FEM
-void nrf_802154_fem_control_cfg_set(nrf_802154_fem_control_cfg_t const * const p_cfg)
+nrf_802154_sl_ant_div_mode_t nrf_802154_antenna_diversity_rx_mode_get(void)
 {
-    nrf_fem_interface_config_t config;
-
-    nrf_fem_interface_configuration_get(&config);
-
-    config.lna_pin_config.active_high  = p_cfg->lna_cfg.active_high;
-    config.lna_pin_config.enable       = p_cfg->lna_cfg.enable;
-    config.lna_pin_config.gpio_pin     = p_cfg->lna_cfg.gpio_pin;
-    config.lna_pin_config.gpiote_ch_id = p_cfg->lna_gpiote_ch_id;
-
-    config.pa_pin_config.active_high  = p_cfg->pa_cfg.active_high;
-    config.pa_pin_config.enable       = p_cfg->pa_cfg.enable;
-    config.pa_pin_config.gpio_pin     = p_cfg->pa_cfg.gpio_pin;
-    config.pa_pin_config.gpiote_ch_id = p_cfg->pa_gpiote_ch_id;
-
-    config.ppi_ch_id_set = p_cfg->ppi_ch_id_set;
-    config.ppi_ch_id_clr = p_cfg->ppi_ch_id_clr;
-
-    nrf_fem_interface_configuration_set(&config);
+    return nrf_802154_sl_ant_div_cfg_mode_get(NRF_802154_SL_ANT_DIV_OP_RX);
 }
 
-void nrf_802154_fem_control_cfg_get(nrf_802154_fem_control_cfg_t * p_cfg)
+bool nrf_802154_antenna_diversity_tx_mode_set(nrf_802154_sl_ant_div_mode_t mode)
 {
-    nrf_fem_interface_config_t config;
+    bool result = false;
 
-    nrf_fem_interface_configuration_get(&config);
+#if defined(RADIO_INTENSET_SYNC_Msk)
+    result = nrf_802154_sl_ant_div_cfg_mode_set(NRF_802154_SL_ANT_DIV_OP_TX, mode);
+#endif
 
-    p_cfg->lna_cfg.active_high = config.lna_pin_config.active_high;
-    p_cfg->lna_cfg.enable      = config.lna_pin_config.enable;
-    p_cfg->lna_cfg.gpio_pin    = config.lna_pin_config.gpio_pin;
+    if (result)
+    {
+        nrf_802154_request_antenna_update();
+    }
 
-    p_cfg->pa_cfg.active_high = config.pa_pin_config.active_high;
-    p_cfg->pa_cfg.enable      = config.pa_pin_config.enable;
-    p_cfg->pa_cfg.gpio_pin    = config.pa_pin_config.gpio_pin;
-
-    p_cfg->lna_gpiote_ch_id = config.lna_pin_config.gpiote_ch_id;
-    p_cfg->pa_gpiote_ch_id  = config.pa_pin_config.gpiote_ch_id;
-
-    p_cfg->ppi_ch_id_clr = config.ppi_ch_id_clr;
-    p_cfg->ppi_ch_id_set = config.ppi_ch_id_set;
+    return result;
 }
 
-#endif // ENABLE_FEM
+nrf_802154_sl_ant_div_mode_t nrf_802154_antenna_diversity_tx_mode_get(void)
+{
+    return nrf_802154_sl_ant_div_cfg_mode_get(NRF_802154_SL_ANT_DIV_OP_TX);
+}
+
+bool nrf_802154_antenna_diversity_rx_antenna_set(nrf_802154_sl_ant_div_antenna_t antenna)
+{
+    bool result =
+        nrf_802154_sl_ant_div_cfg_antenna_set(NRF_802154_SL_ANT_DIV_OP_RX, antenna);
+    bool is_manual_mode = nrf_802154_sl_ant_div_cfg_mode_get(NRF_802154_SL_ANT_DIV_OP_RX) ==
+                          NRF_802154_SL_ANT_DIV_MODE_MANUAL;
+
+    if (result && is_manual_mode)
+    {
+        nrf_802154_request_antenna_update();
+    }
+
+    return result;
+}
+
+nrf_802154_sl_ant_div_antenna_t nrf_802154_antenna_diversity_rx_antenna_get(void)
+{
+    return nrf_802154_sl_ant_div_cfg_antenna_get(NRF_802154_SL_ANT_DIV_OP_RX);
+}
+
+bool nrf_802154_antenna_diversity_tx_antenna_set(nrf_802154_sl_ant_div_antenna_t antenna)
+{
+    bool result =
+        nrf_802154_sl_ant_div_cfg_antenna_set(NRF_802154_SL_ANT_DIV_OP_TX, antenna);
+    bool is_manual_mode = nrf_802154_sl_ant_div_cfg_mode_get(NRF_802154_SL_ANT_DIV_OP_TX) ==
+                          NRF_802154_SL_ANT_DIV_MODE_MANUAL;
+
+    if (result && is_manual_mode)
+    {
+        nrf_802154_request_antenna_update();
+    }
+
+    return result;
+}
+
+nrf_802154_sl_ant_div_antenna_t nrf_802154_antenna_diversity_tx_antenna_get(void)
+{
+    return nrf_802154_sl_ant_div_cfg_antenna_get(NRF_802154_SL_ANT_DIV_OP_TX);
+}
+
+nrf_802154_sl_ant_div_antenna_t nrf_802154_antenna_diversity_last_rx_best_antenna_get(void)
+{
+    return nrf_802154_sl_ant_div_last_rx_best_antenna_get();
+}
+
+void nrf_802154_antenna_diversity_config_set(const nrf_802154_sl_ant_div_cfg_t * p_cfg)
+{
+#if defined(RADIO_INTENSET_SYNC_Msk)
+    nrf_802154_sl_ant_div_cfg_set(p_cfg);
+#endif
+}
+
+bool nrf_802154_antenna_diversity_config_get(nrf_802154_sl_ant_div_cfg_t * p_cfg)
+{
+    return nrf_802154_sl_ant_div_cfg_get(p_cfg);
+}
+
+bool nrf_802154_antenna_diversity_init(void)
+{
+    return nrf_802154_sl_ant_div_init();
+}
+
+void nrf_802154_antenna_diversity_timer_irq_handler(void)
+{
+#if defined(RADIO_INTENSET_SYNC_Msk)
+    nrf_802154_sl_ant_div_timer_irq_handle();
+#endif
+}
 
 nrf_802154_state_t nrf_802154_state_get(void)
 {
@@ -312,6 +365,9 @@ nrf_802154_state_t nrf_802154_state_get(void)
 
         case RADIO_STATE_CONTINUOUS_CARRIER:
             return NRF_802154_STATE_CONTINUOUS_CARRIER;
+
+        case RADIO_STATE_MODULATED_CARRIER:
+            return NRF_802154_STATE_MODULATED_CARRIER;
     }
 
     return NRF_802154_STATE_INVALID;
@@ -321,11 +377,12 @@ bool nrf_802154_sleep(void)
 {
     bool result;
 
-    nrf_802154_log(EVENT_TRACE_ENTER, FUNCTION_SLEEP);
+    nrf_802154_log_function_enter(NRF_802154_LOG_VERBOSITY_LOW);
 
     result = nrf_802154_request_sleep(NRF_802154_TERM_802154);
 
-    nrf_802154_log(EVENT_TRACE_EXIT, FUNCTION_SLEEP);
+    nrf_802154_log_function_exit(NRF_802154_LOG_VERBOSITY_LOW);
+
     return result;
 }
 
@@ -333,13 +390,14 @@ nrf_802154_sleep_error_t nrf_802154_sleep_if_idle(void)
 {
     nrf_802154_sleep_error_t result;
 
-    nrf_802154_log(EVENT_TRACE_ENTER, FUNCTION_SLEEP);
+    nrf_802154_log_function_enter(NRF_802154_LOG_VERBOSITY_LOW);
 
     result =
         nrf_802154_request_sleep(NRF_802154_TERM_NONE) ? NRF_802154_SLEEP_ERROR_NONE :
         NRF_802154_SLEEP_ERROR_BUSY;
 
-    nrf_802154_log(EVENT_TRACE_EXIT, FUNCTION_SLEEP);
+    nrf_802154_log_function_exit(NRF_802154_LOG_VERBOSITY_LOW);
+
     return result;
 }
 
@@ -347,11 +405,11 @@ bool nrf_802154_receive(void)
 {
     bool result;
 
-    nrf_802154_log(EVENT_TRACE_ENTER, FUNCTION_RECEIVE);
+    nrf_802154_log_function_enter(NRF_802154_LOG_VERBOSITY_LOW);
 
     result = nrf_802154_request_receive(NRF_802154_TERM_802154, REQ_ORIG_HIGHER_LAYER, NULL, true);
 
-    nrf_802154_log(EVENT_TRACE_EXIT, FUNCTION_RECEIVE);
+    nrf_802154_log_function_exit(NRF_802154_LOG_VERBOSITY_LOW);
     return result;
 }
 
@@ -360,7 +418,7 @@ bool nrf_802154_transmit_raw(const uint8_t * p_data, bool cca)
 {
     bool result;
 
-    nrf_802154_log(EVENT_TRACE_ENTER, FUNCTION_TRANSMIT);
+    nrf_802154_log_function_enter(NRF_802154_LOG_VERBOSITY_LOW);
 
     result = nrf_802154_request_transmit(NRF_802154_TERM_NONE,
                                          REQ_ORIG_HIGHER_LAYER,
@@ -369,7 +427,7 @@ bool nrf_802154_transmit_raw(const uint8_t * p_data, bool cca)
                                          false,
                                          NULL);
 
-    nrf_802154_log(EVENT_TRACE_EXIT, FUNCTION_TRANSMIT);
+    nrf_802154_log_function_exit(NRF_802154_LOG_VERBOSITY_LOW);
     return result;
 }
 
@@ -379,7 +437,7 @@ bool nrf_802154_transmit(const uint8_t * p_data, uint8_t length, bool cca)
 {
     bool result;
 
-    nrf_802154_log(EVENT_TRACE_ENTER, FUNCTION_TRANSMIT);
+    nrf_802154_log_function_enter(NRF_802154_LOG_VERBOSITY_LOW);
 
     tx_buffer_fill(p_data, length);
     result = nrf_802154_request_transmit(NRF_802154_TERM_NONE,
@@ -389,12 +447,13 @@ bool nrf_802154_transmit(const uint8_t * p_data, uint8_t length, bool cca)
                                          false,
                                          NULL);
 
-    nrf_802154_log(EVENT_TRACE_EXIT, FUNCTION_TRANSMIT);
+    nrf_802154_log_function_exit(NRF_802154_LOG_VERBOSITY_LOW);
     return result;
 }
 
 #endif // NRF_802154_USE_RAW_API
 
+#if NRF_802154_DELAYED_TRX_ENABLED
 bool nrf_802154_transmit_raw_at(const uint8_t * p_data,
                                 bool            cca,
                                 uint32_t        t0,
@@ -403,11 +462,11 @@ bool nrf_802154_transmit_raw_at(const uint8_t * p_data,
 {
     bool result;
 
-    nrf_802154_log(EVENT_TRACE_ENTER, FUNCTION_TRANSMIT_AT);
+    nrf_802154_log_function_enter(NRF_802154_LOG_VERBOSITY_LOW);
 
     result = nrf_802154_delayed_trx_transmit(p_data, cca, t0, dt, channel);
 
-    nrf_802154_log(EVENT_TRACE_EXIT, FUNCTION_TRANSMIT_AT);
+    nrf_802154_log_function_exit(NRF_802154_LOG_VERBOSITY_LOW);
     return result;
 }
 
@@ -415,11 +474,11 @@ bool nrf_802154_transmit_at_cancel(void)
 {
     bool result;
 
-    nrf_802154_log(EVENT_TRACE_ENTER, FUNCTION_TRANSMIT_AT_CANCEL);
+    nrf_802154_log_function_enter(NRF_802154_LOG_VERBOSITY_LOW);
 
     result = nrf_802154_delayed_trx_transmit_cancel();
 
-    nrf_802154_log(EVENT_TRACE_EXIT, FUNCTION_TRANSMIT_AT_CANCEL);
+    nrf_802154_log_function_exit(NRF_802154_LOG_VERBOSITY_LOW);
     return result;
 }
 
@@ -430,11 +489,11 @@ bool nrf_802154_receive_at(uint32_t t0,
 {
     bool result;
 
-    nrf_802154_log(EVENT_TRACE_ENTER, FUNCTION_RECEIVE_AT);
+    nrf_802154_log_function_enter(NRF_802154_LOG_VERBOSITY_LOW);
 
     result = nrf_802154_delayed_trx_receive(t0, dt, timeout, channel);
 
-    nrf_802154_log(EVENT_TRACE_EXIT, FUNCTION_RECEIVE_AT);
+    nrf_802154_log_function_exit(NRF_802154_LOG_VERBOSITY_LOW);
     return result;
 }
 
@@ -442,23 +501,25 @@ bool nrf_802154_receive_at_cancel(void)
 {
     bool result;
 
-    nrf_802154_log(EVENT_TRACE_ENTER, FUNCTION_RECEIVE_AT_CANCEL);
+    nrf_802154_log_function_enter(NRF_802154_LOG_VERBOSITY_LOW);
 
     result = nrf_802154_delayed_trx_receive_cancel();
 
-    nrf_802154_log(EVENT_TRACE_EXIT, FUNCTION_RECEIVE_AT_CANCEL);
+    nrf_802154_log_function_exit(NRF_802154_LOG_VERBOSITY_LOW);
     return result;
 }
+
+#endif // NRF_802154_DELAYED_TRX_ENABLED
 
 bool nrf_802154_energy_detection(uint32_t time_us)
 {
     bool result;
 
-    nrf_802154_log(EVENT_TRACE_ENTER, FUNCTION_ENERGY_DETECTION);
+    nrf_802154_log_function_enter(NRF_802154_LOG_VERBOSITY_LOW);
 
     result = nrf_802154_request_energy_detection(NRF_802154_TERM_NONE, time_us);
 
-    nrf_802154_log(EVENT_TRACE_EXIT, FUNCTION_ENERGY_DETECTION);
+    nrf_802154_log_function_exit(NRF_802154_LOG_VERBOSITY_LOW);
     return result;
 }
 
@@ -466,11 +527,11 @@ bool nrf_802154_cca(void)
 {
     bool result;
 
-    nrf_802154_log(EVENT_TRACE_ENTER, FUNCTION_CCA);
+    nrf_802154_log_function_enter(NRF_802154_LOG_VERBOSITY_LOW);
 
     result = nrf_802154_request_cca(NRF_802154_TERM_NONE);
 
-    nrf_802154_log(EVENT_TRACE_EXIT, FUNCTION_CCA);
+    nrf_802154_log_function_exit(NRF_802154_LOG_VERBOSITY_LOW);
     return result;
 }
 
@@ -478,11 +539,23 @@ bool nrf_802154_continuous_carrier(void)
 {
     bool result;
 
-    nrf_802154_log(EVENT_TRACE_ENTER, FUNCTION_CONTINUOUS_CARRIER);
+    nrf_802154_log_function_enter(NRF_802154_LOG_VERBOSITY_LOW);
 
     result = nrf_802154_request_continuous_carrier(NRF_802154_TERM_NONE);
 
-    nrf_802154_log(EVENT_TRACE_EXIT, FUNCTION_CONTINUOUS_CARRIER);
+    nrf_802154_log_function_exit(NRF_802154_LOG_VERBOSITY_LOW);
+    return result;
+}
+
+bool nrf_802154_modulated_carrier(const uint8_t * p_data)
+{
+    bool result;
+
+    nrf_802154_log_function_enter(NRF_802154_LOG_VERBOSITY_LOW);
+
+    result = nrf_802154_request_modulated_carrier(NRF_802154_TERM_NONE, p_data);
+
+    nrf_802154_log_function_exit(NRF_802154_LOG_VERBOSITY_LOW);
     return result;
 }
 
@@ -490,34 +563,34 @@ bool nrf_802154_continuous_carrier(void)
 
 void nrf_802154_buffer_free_raw(uint8_t * p_data)
 {
+    nrf_802154_log_function_enter(NRF_802154_LOG_VERBOSITY_LOW);
+
     bool          result;
     rx_buffer_t * p_buffer = (rx_buffer_t *)p_data;
 
     assert(p_buffer->free == false);
     (void)p_buffer;
-
-    nrf_802154_log(EVENT_TRACE_ENTER, FUNCTION_BUFFER_FREE);
 
     result = nrf_802154_request_buffer_free(p_data);
     assert(result);
     (void)result;
 
-    nrf_802154_log(EVENT_TRACE_EXIT, FUNCTION_BUFFER_FREE);
+    nrf_802154_log_function_exit(NRF_802154_LOG_VERBOSITY_LOW);
 }
 
 bool nrf_802154_buffer_free_immediately_raw(uint8_t * p_data)
 {
+    nrf_802154_log_function_enter(NRF_802154_LOG_VERBOSITY_LOW);
+
     bool          result;
     rx_buffer_t * p_buffer = (rx_buffer_t *)p_data;
 
     assert(p_buffer->free == false);
     (void)p_buffer;
 
-    nrf_802154_log(EVENT_TRACE_ENTER, FUNCTION_BUFFER_FREE);
-
     result = nrf_802154_request_buffer_free(p_data);
 
-    nrf_802154_log(EVENT_TRACE_EXIT, FUNCTION_BUFFER_FREE);
+    nrf_802154_log_function_exit(NRF_802154_LOG_VERBOSITY_LOW);
     return result;
 }
 
@@ -525,34 +598,34 @@ bool nrf_802154_buffer_free_immediately_raw(uint8_t * p_data)
 
 void nrf_802154_buffer_free(uint8_t * p_data)
 {
+    nrf_802154_log_function_enter(NRF_802154_LOG_VERBOSITY_LOW);
+
     bool          result;
     rx_buffer_t * p_buffer = (rx_buffer_t *)(p_data - RAW_PAYLOAD_OFFSET);
 
     assert(p_buffer->free == false);
     (void)p_buffer;
-
-    nrf_802154_log(EVENT_TRACE_ENTER, FUNCTION_BUFFER_FREE);
 
     result = nrf_802154_request_buffer_free(p_data - RAW_PAYLOAD_OFFSET);
     assert(result);
     (void)result;
 
-    nrf_802154_log(EVENT_TRACE_EXIT, FUNCTION_BUFFER_FREE);
+    nrf_802154_log_function_exit(NRF_802154_LOG_VERBOSITY_LOW);
 }
 
 bool nrf_802154_buffer_free_immediately(uint8_t * p_data)
 {
+    nrf_802154_log_function_enter(NRF_802154_LOG_VERBOSITY_LOW);
+
     bool          result;
     rx_buffer_t * p_buffer = (rx_buffer_t *)(p_data - RAW_PAYLOAD_OFFSET);
 
     assert(p_buffer->free == false);
     (void)p_buffer;
 
-    nrf_802154_log(EVENT_TRACE_ENTER, FUNCTION_BUFFER_FREE);
-
     result = nrf_802154_request_buffer_free(p_data - RAW_PAYLOAD_OFFSET);
 
-    nrf_802154_log(EVENT_TRACE_EXIT, FUNCTION_BUFFER_FREE);
+    nrf_802154_log_function_exit(NRF_802154_LOG_VERBOSITY_LOW);
     return result;
 }
 
@@ -610,16 +683,18 @@ void nrf_802154_src_addr_matching_method_set(nrf_802154_src_addr_match_t match_m
     nrf_802154_ack_data_src_addr_matching_method_set(match_method);
 }
 
-bool nrf_802154_ack_data_set(const uint8_t * p_addr,
-                             bool            extended,
-                             const void    * p_data,
-                             uint16_t        length,
-                             uint8_t         data_type)
+bool nrf_802154_ack_data_set(const uint8_t       * p_addr,
+                             bool                  extended,
+                             const void          * p_data,
+                             uint16_t              length,
+                             nrf_802154_ack_data_t data_type)
 {
     return nrf_802154_ack_data_for_addr_set(p_addr, extended, data_type, p_data, length);
 }
 
-bool nrf_802154_ack_data_clear(const uint8_t * p_addr, bool extended, uint8_t data_type)
+bool nrf_802154_ack_data_clear(const uint8_t       * p_addr,
+                               bool                  extended,
+                               nrf_802154_ack_data_t data_type)
 {
     return nrf_802154_ack_data_for_addr_clear(p_addr, extended, data_type);
 }
@@ -665,27 +740,58 @@ void nrf_802154_cca_cfg_get(nrf_802154_cca_cfg_t * p_cca_cfg)
 
 void nrf_802154_transmit_csma_ca_raw(const uint8_t * p_data)
 {
-    nrf_802154_log(EVENT_TRACE_ENTER, FUNCTION_CSMACA);
+    nrf_802154_log_function_enter(NRF_802154_LOG_VERBOSITY_LOW);
 
     nrf_802154_csma_ca_start(p_data);
 
-    nrf_802154_log(EVENT_TRACE_EXIT, FUNCTION_CSMACA);
+    nrf_802154_log_function_exit(NRF_802154_LOG_VERBOSITY_LOW);
 }
 
 #else // NRF_802154_USE_RAW_API
 
 void nrf_802154_transmit_csma_ca(const uint8_t * p_data, uint8_t length)
 {
-    nrf_802154_log(EVENT_TRACE_ENTER, FUNCTION_CSMACA);
+    nrf_802154_log_function_enter(NRF_802154_LOG_VERBOSITY_LOW);
 
     tx_buffer_fill(p_data, length);
 
     nrf_802154_csma_ca_start(m_tx_buffer);
 
-    nrf_802154_log(EVENT_TRACE_EXIT, FUNCTION_CSMACA);
+    nrf_802154_log_function_exit(NRF_802154_LOG_VERBOSITY_LOW);
 }
 
 #endif // NRF_802154_USE_RAW_API
+
+bool nrf_802154_csma_ca_min_be_set(uint8_t min_be)
+{
+    return nrf_802154_pib_csmaca_min_be_set(min_be);
+}
+
+uint8_t nrf_802154_csma_ca_min_be_get(void)
+{
+    return nrf_802154_pib_csmaca_min_be_get();
+}
+
+bool nrf_802154_csma_ca_max_be_set(uint8_t max_be)
+{
+    return nrf_802154_pib_csmaca_max_be_set(max_be);
+}
+
+uint8_t nrf_802154_csma_ca_max_be_get(void)
+{
+    return nrf_802154_pib_csmaca_max_be_get();
+}
+
+void nrf_802154_csma_ca_max_backoffs_set(uint8_t max_backoffs)
+{
+    nrf_802154_pib_csmaca_max_backoffs_set(max_backoffs);
+}
+
+uint8_t nrf_802154_csma_ca_max_backoffs_get(void)
+{
+    return nrf_802154_pib_csmaca_max_backoffs_get();
+}
+
 #endif // NRF_802154_CSMA_CA_ENABLED
 
 #if NRF_802154_ACK_TIMEOUT_ENABLED
@@ -697,6 +803,45 @@ void nrf_802154_ack_timeout_set(uint32_t time)
 
 #endif // NRF_802154_ACK_TIMEOUT_ENABLED
 
+#if NRF_802154_IFS_ENABLED
+
+nrf_802154_ifs_mode_t nrf_802154_ifs_mode_get(void)
+{
+    return nrf_802154_pib_ifs_mode_get();
+}
+
+bool nrf_802154_ifs_mode_set(nrf_802154_ifs_mode_t mode)
+{
+    return nrf_802154_pib_ifs_mode_set(mode);
+}
+
+uint16_t nrf_802154_ifs_min_sifs_period_get(void)
+{
+    return nrf_802154_pib_ifs_min_sifs_period_get();
+}
+
+void nrf_802154_ifs_min_sifs_period_set(uint16_t period)
+{
+    nrf_802154_pib_ifs_min_sifs_period_set(period);
+}
+
+uint16_t nrf_802154_ifs_min_lifs_period_get(void)
+{
+    return nrf_802154_pib_ifs_min_lifs_period_get();
+}
+
+void nrf_802154_ifs_min_lifs_period_set(uint16_t period)
+{
+    nrf_802154_pib_ifs_min_lifs_period_set(period);
+}
+
+#endif // NRF_802154_IFS_ENABLED
+
+uint32_t nrf_802154_time_get(void)
+{
+    return nrf_802154_timer_sched_time_get();
+}
+
 __WEAK void nrf_802154_tx_ack_started(const uint8_t * p_data)
 {
     (void)p_data;
@@ -705,7 +850,8 @@ __WEAK void nrf_802154_tx_ack_started(const uint8_t * p_data)
 #if NRF_802154_USE_RAW_API
 __WEAK void nrf_802154_received_raw(uint8_t * p_data, int8_t power, uint8_t lqi)
 {
-    nrf_802154_received_timestamp_raw(p_data, power, lqi, last_rx_frame_timestamp_get());
+    nrf_802154_received_timestamp_raw(p_data, power, lqi,
+                                      nrf_802154_stat_timestamp_read(last_rx_end_timestamp));
 }
 
 __WEAK void nrf_802154_received_timestamp_raw(uint8_t * p_data,
@@ -759,7 +905,8 @@ __WEAK void nrf_802154_transmitted_raw(const uint8_t * p_frame,
                                        int8_t          power,
                                        uint8_t         lqi)
 {
-    uint32_t timestamp = (p_ack == NULL) ? NRF_802154_NO_TIMESTAMP : last_rx_frame_timestamp_get();
+    uint32_t timestamp = (p_ack == NULL) ? NRF_802154_NO_TIMESTAMP : nrf_802154_stat_timestamp_read(
+        last_ack_end_timestamp);
 
     nrf_802154_transmitted_timestamp_raw(p_frame, p_ack, power, lqi, timestamp);
 }
