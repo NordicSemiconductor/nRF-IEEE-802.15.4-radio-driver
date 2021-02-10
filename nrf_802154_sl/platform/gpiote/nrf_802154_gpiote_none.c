@@ -51,7 +51,7 @@
 
 #include "hal/nrf_gpiote.h"
 #include "nrf_802154_sl_coex.h"
-#include "nrf_802154_irq.h"
+#include "platform/irq/nrf_802154_irq.h"
 
 #define GPIOTE_IRQ_PRIORITY 4
 

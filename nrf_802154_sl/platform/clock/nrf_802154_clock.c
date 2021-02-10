@@ -39,7 +39,7 @@
  * This implementation uses clock driver implementation from nrfx.
  */
 
-#include "nrf_802154_clock.h"
+#include "platform/clock/nrf_802154_clock.h"
 
 #include <stddef.h>
 
