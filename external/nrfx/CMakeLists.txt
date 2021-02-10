@@ -1,0 +1,27 @@
+add_library(nrfx STATIC "")
+target_sources(nrfx
+  PRIVATE
+    nrfx/drivers/src/nrfx_clock.c
+    nrfx/mdk/system_${TARGET_SOC}.c
+    nrfx/mdk/gcc_startup_${TARGET_SOC}.S
+)
+target_include_directories(nrfx
+  PUBLIC
+    ./
+    nrfx/
+    nrfx/hal/
+    nrfx/mdk/
+    nrfx/drivers/
+    nrfx/drivers/include/
+    nrfx/soc/
+)
+target_link_libraries(nrfx
+  PUBLIC
+    cmsis
+    nrf_802154_platform
+)
+target_link_options(nrfx
+  PUBLIC
+    -L${CMAKE_CURRENT_SOURCE_DIR}/nrfx/mdk
+    -T${TARGET_SOC}_xxaa.ld
+)
