@@ -39,7 +39,7 @@
  * This implementation uses clock driver implementation from MPSL.
  */
 
-#include "nrf_802154_clock.h"
+#include "platform/clock/nrf_802154_clock.h"
 
 #include <assert.h>
 #include <stdint.h>

@@ -37,7 +37,7 @@
  *   This file implements the nrf 802.15.4 Interrupt Abstraction Layer with direct NVIC calls.
  */
 
-#include "nrf_802154_irq.h"
+#include "platform/irq/nrf_802154_irq.h"
 
 #include "nrf.h"
 
