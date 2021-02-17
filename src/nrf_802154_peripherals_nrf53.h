@@ -1,6 +1,8 @@
 /*
- * Copyright (c) 2019 - 2020, Nordic Semiconductor ASA
+ * Copyright (c) 2019 - 2021, Nordic Semiconductor ASA
  * All rights reserved.
+ *
+ * SPDX-License-Identifier: BSD-3-Clause
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
@@ -12,7 +14,7 @@
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
  *
- * 3. Neither the name of the copyright holder nor the names of its
+ * 3. Neither the name of Nordic Semiconductor ASA nor the names of its
  *    contributors may be used to endorse or promote products derived from this
  *    software without specific prior written permission.
  *
@@ -27,6 +29,7 @@
  * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
+ *
  */
 
 /**
@@ -157,6 +160,28 @@ extern "C" {
 #ifndef NRF_802154_DPPI_RADIO_SYNC_TO_EGU_SYNC
 #define NRF_802154_DPPI_RADIO_SYNC_TO_EGU_SYNC 8U
 #endif
+
+/**
+ * @def NRF_802154_DPPI_CHANNELS_USED_MASK
+ *
+ * Bit mask of DPPI channels used by the 802.15.4 driver.
+ */
+#ifndef NRF_802154_DPPI_CHANNELS_USED_MASK
+#define NRF_802154_DPPI_CHANNELS_USED_MASK (                   \
+        (1UL << NRF_802154_DPPI_RADIO_DISABLED_TO_EGU) |       \
+        (1UL << NRF_802154_DPPI_EGU_TO_RADIO_RAMP_UP) |        \
+        (1UL << NRF_802154_DPPI_TIMER_COMPARE_TO_RADIO_TXEN) | \
+        (1UL << NRF_802154_DPPI_RADIO_SYNC_TO_EGU_SYNC))
+#endif // NRF_802154_DPPI_CHANNELS_USED_MASK
+
+/**
+ * @def NRF_802154_DPPI_GROUPS_USED_MASK
+ *
+ * Bit mask of DPPI groups identifiers used by the 802.15.4 driver.
+ */
+#ifndef NRF_802154_DPPI_GROUPS_USED_MASK
+#define NRF_802154_DPPI_GROUPS_USED_MASK 0UL
+#endif // NRF_802154_DPPI_GROUPS_USED_MASK
 
 #ifdef __cplusplus
 }

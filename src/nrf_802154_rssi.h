@@ -1,6 +1,8 @@
 /*
- * Copyright (c) 2018 - 2020, Nordic Semiconductor ASA
+ * Copyright (c) 2018 - 2021, Nordic Semiconductor ASA
  * All rights reserved.
+ *
+ * SPDX-License-Identifier: BSD-3-Clause
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
@@ -12,7 +14,7 @@
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
  *
- * 3. Neither the name of the copyright holder nor the names of its
+ * 3. Neither the name of Nordic Semiconductor ASA nor the names of its
  *    contributors may be used to endorse or promote products derived from this
  *    software without specific prior written permission.
  *
@@ -27,6 +29,7 @@
  * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
+ *
  */
 
 #ifndef NRF_802154_RSSI_H__
@@ -46,16 +49,18 @@
  *
  * The correction value is based on the last temperature value reported by the platform.
  *
- * @returns RSSISAMPLE temperature correction value (Errata 153).
+ * @param[in]  rssi_sample  Value read from the RSSISAMPLE register.
+ *
+ * @returns RSSISAMPLE temperature correction value.
  */
-int8_t nrf_802154_rssi_sample_temp_corr_value_get(void);
+int8_t nrf_802154_rssi_sample_temp_corr_value_get(uint8_t rssi_sample);
 
 /**
  * @brief Adjusts the given RSSISAMPLE value by a temperature correction factor.
  *
  * @param[in]  rssi_sample  Value read from the RSSISAMPLE register.
  *
- * @returns RSSISAMPLE corrected by a temperature factor (Errata 153).
+ * @returns RSSISAMPLE corrected by a temperature factor.
  */
 uint8_t nrf_802154_rssi_sample_corrected_get(uint8_t rssi_sample);
 
@@ -64,7 +69,7 @@ uint8_t nrf_802154_rssi_sample_corrected_get(uint8_t rssi_sample);
  *
  * @param[in]  lqi   Value read from the LQI byte.
  *
- * @returns LQI byte value corrected by a temperature factor (Errata 153).
+ * @returns LQI byte value corrected by a temperature factor.
  */
 uint8_t nrf_802154_rssi_lqi_corrected_get(uint8_t lqi);
 
@@ -73,7 +78,7 @@ uint8_t nrf_802154_rssi_lqi_corrected_get(uint8_t lqi);
  *
  * @param[in]  ed    Value read from the EDSAMPLE register.
  *
- * @returns EDSAMPLE value corrected by a temperature factor (Errata 153).
+ * @returns EDSAMPLE value corrected by a temperature factor.
  */
 uint8_t nrf_802154_rssi_ed_corrected_get(uint8_t ed);
 
@@ -82,7 +87,7 @@ uint8_t nrf_802154_rssi_ed_corrected_get(uint8_t ed);
  *
  * @param[in]  cca_ed  Value representing the CCA ED threshold to be corrected.
  *
- * @returns CCA ED threshold value corrected by a temperature factor (Errata 153).
+ * @returns CCA ED threshold value corrected by a temperature factor.
  */
 uint8_t nrf_802154_rssi_cca_ed_threshold_corrected_get(uint8_t cca_ed);
 

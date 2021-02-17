@@ -1,6 +1,8 @@
 /*
- * Copyright (c) 2020, Nordic Semiconductor ASA
+ * Copyright (c) 2020 - 2021, Nordic Semiconductor ASA
  * All rights reserved.
+ *
+ * SPDX-License-Identifier: BSD-3-Clause
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
@@ -12,7 +14,7 @@
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
  *
- * 3. Neither the name of the copyright holder nor the names of its
+ * 3. Neither the name of Nordic Semiconductor ASA nor the names of its
  *    contributors may be used to endorse or promote products derived from this
  *    software without specific prior written permission.
  *
@@ -27,6 +29,7 @@
  * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
+ *
  */
 
 #define NRF_802154_MODULE_ID NRF_802154_DRV_MODULE_ID_TRX_PPI
@@ -37,6 +40,8 @@
 
 #include "nrf_802154_debug_log.h"
 #include "nrf_802154_peripherals.h"
+
+#include "mpsl_fem_protocol_api.h"
 
 #include "hal/nrf_egu.h"
 #include "hal/nrf_ppi.h"
@@ -222,7 +227,11 @@ bool nrf_802154_trx_ppi_for_fem_powerdown_set(NRF_TIMER_Type * p_instance,
 
     // PPI_EGU_TIMER_START is reused here on purpose, to save resources,
     // as fem powerdown cannot be scheduled simultaneously with fem ramp-up.
-    bool result = nrf_fem_prepare_powerdown(p_instance, compare_channel, PPI_EGU_TIMER_START);
+    bool result = mpsl_fem_prepare_powerdown(p_instance,
+                                             compare_channel,
+                                             PPI_EGU_TIMER_START,
+                                             nrf_radio_event_address_get(NRF_RADIO,
+                                                                         NRF_RADIO_EVENT_DISABLED));
 
     nrf_802154_log_function_exit(NRF_802154_LOG_VERBOSITY_HIGH);
 
