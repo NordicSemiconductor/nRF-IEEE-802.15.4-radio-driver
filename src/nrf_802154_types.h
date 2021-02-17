@@ -1,6 +1,8 @@
 /*
- * Copyright (c) 2018 - 2020, Nordic Semiconductor ASA
+ * Copyright (c) 2018 - 2021, Nordic Semiconductor ASA
  * All rights reserved.
+ *
+ * SPDX-License-Identifier: BSD-3-Clause
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
@@ -12,7 +14,7 @@
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
  *
- * 3. Neither the name of the copyright holder nor the names of its
+ * 3. Neither the name of Nordic Semiconductor ASA nor the names of its
  *    contributors may be used to endorse or promote products derived from this
  *    software without specific prior written permission.
  *
@@ -27,6 +29,7 @@
  * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
+ *
  */
 
 #ifndef NRF_802154_TYPES_H__
@@ -212,6 +215,29 @@ typedef uint8_t nrf_802154_ifs_mode_t;
 #define NRF_802154_IFS_MODE_DISABLED           0x00 // !< Interframe spacing is never inserted.
 #define NRF_802154_IFS_MODE_MATCHING_ADDRESSES 0x01 // !< Interframe spacing is inserted only on matching addresses.
 #define NRF_802154_IFS_MODE_ALWAYS             0x02 // !< Interframe spacing is always inserted.
+
+/**
+ * @brief Capabilities of nrf 802.15.4 radio driver
+ *
+ * Possible values:
+ * - @ref NRF_802154_CAPABILITY_CSMA,
+ * - @ref NRF_802154_CAPABILITY_DELAYED_TX,
+ * - @ref NRF_802154_CAPABILITY_DELAYED_RX,
+ * - @ref NRF_802154_CAPABILITY_ACK_TIMEOUT,
+ * - @ref NRF_802154_CAPABILITY_ANT_DIVERSITY,
+ * - @ref NRF_802154_CAPABILITY_IFS,
+ * - @ref NRF_802154_CAPABILITY_TIMESTAMP
+ *
+ */
+typedef uint32_t nrf_802154_capabilities_t;
+
+#define NRF_802154_CAPABILITY_CSMA          (1UL << 0UL) // !< CSMA-CA supported
+#define NRF_802154_CAPABILITY_DELAYED_TX    (1UL << 1UL) // !< TX at specified time supported
+#define NRF_802154_CAPABILITY_DELAYED_RX    (1UL << 2UL) // !< RX at specified time supported
+#define NRF_802154_CAPABILITY_ACK_TIMEOUT   (1UL << 3UL) // !< ACK timeout supported
+#define NRF_802154_CAPABILITY_ANT_DIVERSITY (1UL << 4UL) // !< Antenna diversity supported
+#define NRF_802154_CAPABILITY_IFS           (1UL << 5UL) // !< Inter-frame spacing supported
+#define NRF_802154_CAPABILITY_TIMESTAMP     (1UL << 6UL) // !< Frame timestamping supported
 
 /**
  * @brief Type of structure holding statistic counters.

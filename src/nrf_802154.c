@@ -1,6 +1,8 @@
 /*
- * Copyright (c) 2018 - 2020, Nordic Semiconductor ASA
+ * Copyright (c) 2018 - 2021, Nordic Semiconductor ASA
  * All rights reserved.
+ *
+ * SPDX-License-Identifier: BSD-3-Clause
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
@@ -12,7 +14,7 @@
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
  *
- * 3. Neither the name of the copyright holder nor the names of its
+ * 3. Neither the name of Nordic Semiconductor ASA nor the names of its
  *    contributors may be used to endorse or promote products derived from this
  *    software without specific prior written permission.
  *
@@ -27,6 +29,7 @@
  * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
+ *
  */
 
 /**
@@ -74,6 +77,7 @@
 #include "mac_features/ack_generator/nrf_802154_ack_data.h"
 
 #include "nrf_802154_sl_ant_div.h"
+#include "nrf_802154_sl_capabilities.h"
 
 #define RAW_LENGTH_OFFSET  0
 #define RAW_PAYLOAD_OFFSET 1
@@ -837,9 +841,54 @@ void nrf_802154_ifs_min_lifs_period_set(uint16_t period)
 
 #endif // NRF_802154_IFS_ENABLED
 
+nrf_802154_capabilities_t nrf_802154_capabilities_get(void)
+{
+    nrf_802154_capabilities_t    caps_drv = 0UL;
+    nrf_802154_sl_capabilities_t caps_sl  = nrf_802154_sl_capabilities_get();
+
+    /* Capabilities of the Service Layer depend on the version of it linked in,
+     * hence require run-time probing. */
+    caps_drv |= (NRF_802154_SL_CAPABILITY_CSMA & caps_sl) ?
+                NRF_802154_CAPABILITY_CSMA : 0UL;
+    caps_drv |= (NRF_802154_SL_CAPABILITY_DELAYED_TX & caps_sl) ?
+                NRF_802154_CAPABILITY_DELAYED_TX : 0UL;
+    caps_drv |= (NRF_802154_SL_CAPABILITY_DELAYED_RX & caps_sl) ?
+                NRF_802154_CAPABILITY_DELAYED_RX : 0UL;
+    caps_drv |= (NRF_802154_SL_CAPABILITY_ANT_DIVERSITY & caps_sl) ?
+                NRF_802154_CAPABILITY_ANT_DIVERSITY : 0UL;
+    caps_drv |= (NRF_802154_SL_CAPABILITY_TIMESTAMP & caps_sl) ?
+                NRF_802154_CAPABILITY_TIMESTAMP : 0UL;
+
+    /* Some Radio Driver capabilities are configured at compile time. */
+    caps_drv |= (NRF_802154_ACK_TIMEOUT_ENABLED ?
+                 NRF_802154_CAPABILITY_ACK_TIMEOUT : 0UL);
+
+    /* Both IFS and ACK Timeout features require timer scheduler, however
+     * using them both at the same time requires that SL is able to schedule
+     * several timers simultaneously.
+     *
+     * ACK Timeout capability takes precedence over IFS if only one timer
+     * can be scheduled because there is no known usecase for IFS without ACK Timeout,
+     * and this configuration would require additional testing. If such usecase emerges,
+     * this logic should be updated.
+     */
+    if (NRF_802154_SL_CAPABILITY_MULTITIMER & caps_sl)
+    {
+        caps_drv |= (NRF_802154_IFS_ENABLED ?
+                     NRF_802154_CAPABILITY_IFS : 0UL);
+    }
+
+    return caps_drv;
+}
+
 uint32_t nrf_802154_time_get(void)
 {
     return nrf_802154_timer_sched_time_get();
+}
+
+__WEAK void nrf_802154_custom_part_of_radio_init(void)
+{
+    // Intentionally empty
 }
 
 __WEAK void nrf_802154_tx_ack_started(const uint8_t * p_data)

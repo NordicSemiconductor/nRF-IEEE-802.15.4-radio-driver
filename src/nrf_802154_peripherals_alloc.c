@@ -2,8 +2,6 @@
  * Copyright (c) 2017 - 2021, Nordic Semiconductor ASA
  * All rights reserved.
  *
- * SPDX-License-Identifier: BSD-3-Clause
- *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
  *
@@ -14,7 +12,7 @@
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
  *
- * 3. Neither the name of Nordic Semiconductor ASA nor the names of its
+ * 3. Neither the name of the copyright holder nor the names of its
  *    contributors may be used to endorse or promote products derived from this
  *    software without specific prior written permission.
  *
@@ -29,58 +27,48 @@
  * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
- *
  */
 
 /**
- * @brief Module that contains buffer for frames received by the nRF 802.15.4 radio driver.
+ * @file
+ *   This file supplies bitmasks specifying which of the peripherals are used
+ *   by the 802.15.4 driver.
  *
+ * Bitmasks currently provided applies to:
+ *   - PPI or DPPI channels (g_nrf_802154_used_nrf_ppi_channels)
+ *   - PPI or DPPI channel groups (g_nrf_802154_used_nrf_ppi_groups)
  */
 
-#ifndef NRF_802154_RX_BUFFER_H_
-#define NRF_802154_RX_BUFFER_H_
+#include "nrf_802154_peripherals.h"
 
-#include <stdbool.h>
 #include <stdint.h>
 
-#include "nrf_802154_const.h"
-
-#ifdef __cplusplus
-extern "C" {
+#if NRF_802154_VERIFY_PERIPHS_ALLOC_AGAINST_MPSL
+/* Obtaining the MPSL_RESERVED_.. macros */
+#include "mpsl.h"
 #endif
 
-/**
- * @brief Structure that contains the received frame.
- */
-typedef struct
-{
-    uint8_t data[MAX_PACKET_SIZE + 1];
-    bool    free; // If this buffer is free or contains a frame.
-} rx_buffer_t;
-
-/**
- * @brief Array that contains all buffers used to receive frame.
- *
- * This array is in the global scope to allow optimizations in the core module if there is only
- * one buffer provided by this module.
- *
- */
-extern rx_buffer_t nrf_802154_rx_buffers[];
-
-/**
- * @brief Initializes the buffer for received frames.
- */
-void nrf_802154_rx_buffer_init(void);
-
-/**
- * @brief Gets a free buffer to receive a frame.
- *
- * @returns  Pointer to a free buffer, or NULL if no free buffer is available.
- */
-rx_buffer_t * nrf_802154_rx_buffer_free_find(void);
-
-#ifdef __cplusplus
-}
+#if defined(NRF52_SERIES)
+#define NRF_802154_PPI_CH_USED_MSK NRF_802154_PPI_CHANNELS_USED_MASK
+#define NRF_802154_PPI_GR_USED_MSK NRF_802154_PPI_GROUPS_USED_MASK
+#elif defined(NRF53_SERIES)
+#define NRF_802154_PPI_CH_USED_MSK NRF_802154_DPPI_CHANNELS_USED_MASK
+#define NRF_802154_PPI_GR_USED_MSK NRF_802154_DPPI_GROUPS_USED_MASK
+#else
+#error Unsupported chip family
 #endif
 
-#endif /* NRF_802154_RX_BUFFER_H_ */
+const uint32_t g_nrf_802154_used_nrf_ppi_channels = NRF_802154_PPI_CH_USED_MSK;
+const uint32_t g_nrf_802154_used_nrf_ppi_groups   = NRF_802154_PPI_GR_USED_MSK;
+
+#if NRF_802154_VERIFY_PERIPHS_ALLOC_AGAINST_MPSL
+
+#if ((NRF_802154_PPI_CH_USED_MSK & MPSL_RESERVED_PPI_CHANNELS) != 0UL)
+#error PPI channels for 802.15.4 driver overlap with MPSL channels
+#endif
+
+#if ((NRF_802154_PPI_GR_USED_MSK & MPSL_RESERVED_PPI_GROUPS) != 0UL)
+#error PPI groups for 802.15.4 driver overlap with MPSL groups
+#endif
+
+#endif // NRF_802154_VERIFY_PERIPHS_ALLOC_AGAINST_MPSL

@@ -1,6 +1,8 @@
 /*
- * Copyright (c) 2017 - 2020, Nordic Semiconductor ASA
+ * Copyright (c) 2017 - 2021, Nordic Semiconductor ASA
  * All rights reserved.
+ *
+ * SPDX-License-Identifier: BSD-3-Clause
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
@@ -12,7 +14,7 @@
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
  *
- * 3. Neither the name of the copyright holder nor the names of its
+ * 3. Neither the name of Nordic Semiconductor ASA nor the names of its
  *    contributors may be used to endorse or promote products derived from this
  *    software without specific prior written permission.
  *
@@ -27,6 +29,7 @@
  * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
+ *
  */
 
 /**
@@ -71,6 +74,15 @@ void nrf_802154_init(void);
  * This function deinitializes the RADIO peripheral and resets it to the default state.
  */
 void nrf_802154_deinit(void);
+
+/**
+ * @brief Perform some additional operations during initialization of the RADIO peripheral.
+ *
+ * By implementing this function the higher layer can provide some additional operations
+ * to be performed at the beginning of each new timeslot. These can in particular be
+ * modifications of RADIO peripheral register values.
+ */
+extern void nrf_802154_custom_part_of_radio_init(void);
 
 #if !NRF_802154_INTERNAL_RADIO_IRQ_HANDLING
 /**
@@ -1618,6 +1630,19 @@ uint16_t nrf_802154_ifs_min_lifs_period_get(void);
 void nrf_802154_ifs_min_lifs_period_set(uint16_t period);
 
 #endif // NRF_802154_IFS_ENABLED
+
+/**
+ * @}
+ * @defgroup nrf_802154_capabilities Radio driver run-time capabilities feature.
+ * @{
+ */
+
+/**
+ * @brief Gets nRF 802.15.4 Radio Diver Capabilities.
+ *
+ * @return Capabilities of the radio driver.
+ */
+nrf_802154_capabilities_t nrf_802154_capabilities_get(void);
 
 /** @} */
 

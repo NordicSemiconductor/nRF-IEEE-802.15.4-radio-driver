@@ -8,6 +8,7 @@ set(NRF_802154_DRIVER_SOURCES_COMMON
     ${NRF_802154_DRIVER_ROOT}/src/nrf_802154_debug.c
     ${NRF_802154_DRIVER_ROOT}/src/nrf_802154_debug_assert.c
     ${NRF_802154_DRIVER_ROOT}/src/nrf_802154_pib.c
+    ${NRF_802154_DRIVER_ROOT}/src/nrf_802154_peripherals_alloc.c
     ${NRF_802154_DRIVER_ROOT}/src/nrf_802154_queue.c
     ${NRF_802154_DRIVER_ROOT}/src/nrf_802154_rssi.c
     ${NRF_802154_DRIVER_ROOT}/src/nrf_802154_rx_buffer.c
@@ -24,7 +25,7 @@ set(NRF_802154_DRIVER_SOURCES_COMMON
     ${NRF_802154_DRIVER_ROOT}/src/mac_features/ack_generator/nrf_802154_ack_generator.c
     ${NRF_802154_DRIVER_ROOT}/src/mac_features/ack_generator/nrf_802154_enh_ack_generator.c
     ${NRF_802154_DRIVER_ROOT}/src/mac_features/ack_generator/nrf_802154_imm_ack_generator.c
-    ${NRF_802154_DRIVER_ROOT}/src/platform/random/nrf_802154_random_zephyr.c
+    ${NRF_802154_DRIVER_ROOT}/src/platform/random/nrf_802154_random_newlib.c
     ${NRF_802154_DRIVER_ROOT}/src/platform/temperature/nrf_802154_temperature_none.c
 )
 
