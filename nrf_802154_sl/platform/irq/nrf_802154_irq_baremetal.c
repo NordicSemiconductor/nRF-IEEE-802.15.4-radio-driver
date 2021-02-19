@@ -68,30 +68,30 @@ void nrf_802154_irq_init(uint32_t irqn, uint32_t prio, nrf_802154_isr_t isr)
      */
     (void)isr;
 
-    NVIC_SetPriority(irqn, prio);
-    NVIC_ClearPendingIRQ(irqn);
+    NVIC_SetPriority((IRQn_Type)irqn, prio);
+    NVIC_ClearPendingIRQ((IRQn_Type)irqn);
 }
 
 void nrf_802154_irq_enable(uint32_t irqn)
 {
-    NVIC_EnableIRQ(irqn);
+    NVIC_EnableIRQ((IRQn_Type)irqn);
 }
 
 void nrf_802154_irq_disable(uint32_t irqn)
 {
-    NVIC_DisableIRQ(irqn);
+    NVIC_DisableIRQ((IRQn_Type)irqn);
     __DSB();
     __ISB();
 }
 
 void nrf_802154_irq_set_pending(uint32_t irqn)
 {
-    NVIC_SetPendingIRQ(irqn);
+    NVIC_SetPendingIRQ((IRQn_Type)irqn);
 }
 
 void nrf_802154_irq_clear_pending(uint32_t irqn)
 {
-    NVIC_ClearPendingIRQ(irqn);
+    NVIC_ClearPendingIRQ((IRQn_Type)irqn);
 }
 
 bool nrf_802154_irq_is_enabled(uint32_t irqn)
@@ -103,5 +103,5 @@ bool nrf_802154_irq_is_enabled(uint32_t irqn)
 
 uint32_t nrf_802154_irq_priority_get(uint32_t irqn)
 {
-    return NVIC_GetPriority(irqn);
+    return NVIC_GetPriority((IRQn_Type)irqn);
 }

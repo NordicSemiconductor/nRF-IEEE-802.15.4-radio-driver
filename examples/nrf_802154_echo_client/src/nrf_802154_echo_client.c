@@ -192,6 +192,7 @@ int main(void)
 
     frame_init();
 
+    // coverity[no_escape]
     while (1)
     {
         frame_sequence_number_set(sequence_number_generate());

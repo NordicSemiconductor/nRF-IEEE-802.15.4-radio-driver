@@ -158,6 +158,7 @@ int main(void)
 
     nrf_802154_receive();
 
+    // coverity[no_escape]
     while (1)
     {
         __WFE();
