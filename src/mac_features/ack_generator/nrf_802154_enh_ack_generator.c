@@ -352,8 +352,8 @@ const uint8_t * nrf_802154_enh_ack_generator_create(const uint8_t * p_frame)
         return NULL;
     }
 
-    uint8_t         ie_data_len;
-    const uint8_t * p_ie_data = nrf_802154_ack_data_ie_get(
+    uint8_t         ie_data_len = 0;
+    const uint8_t * p_ie_data   = nrf_802154_ack_data_ie_get(
         frame_offsets.p_src_addr,
         frame_offsets.src_addr_size == EXTENDED_ADDRESS_SIZE,
         &ie_data_len);

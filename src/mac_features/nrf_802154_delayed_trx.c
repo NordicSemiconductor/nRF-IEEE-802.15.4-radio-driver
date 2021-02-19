@@ -493,8 +493,8 @@ bool nrf_802154_delayed_trx_transmit_cancel(void)
 
 bool nrf_802154_delayed_trx_receive_cancel(void)
 {
-    bool result = nrf_802154_rsch_delayed_timeslot_cancel(RSCH_DLY_RX);
-    bool was_running;
+    bool result      = nrf_802154_rsch_delayed_timeslot_cancel(RSCH_DLY_RX);
+    bool was_running = false;
 
     nrf_802154_timer_sched_remove(&m_timeout_timer, &was_running);
 

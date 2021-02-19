@@ -228,6 +228,7 @@ int main(void)
     frame_sequence_number_set(sequence_number_generate());
     nrf_802154_transmit_raw(mp_frame, true);
 
+    // coverity[no_escape]
     while (1)
     {
         __WFE();

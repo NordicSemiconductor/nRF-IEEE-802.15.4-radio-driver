@@ -196,8 +196,6 @@ static void critical_section_exit(void)
                 result = critical_section_enter(false);
                 assert(result);
                 (void)result;
-
-                continue;
             }
             else
             {

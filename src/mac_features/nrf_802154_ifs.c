@@ -218,8 +218,8 @@ void nrf_802154_ifs_transmitted_hook(const uint8_t * p_frame)
 
 bool nrf_802154_ifs_abort(nrf_802154_term_t term_lvl, req_originator_t req_orig)
 {
-    bool result = true;
-    bool was_running;
+    bool result      = true;
+    bool was_running = false;
 
     if (req_orig == REQ_ORIG_IFS)
     {

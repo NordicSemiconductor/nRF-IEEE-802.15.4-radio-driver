@@ -56,6 +56,7 @@ void __assert_func(const char * file, int line, const char * func, const char * 
 #endif
     __disable_irq();
 
+    // coverity[no_escape]
     while (1)
         ;
 }
@@ -71,6 +72,7 @@ void __aeabi_assert(const char * expr, const char * file, int line)
 #endif
     __disable_irq();
 
+    // coverity[no_escape]
     while (1)
         ;
 }

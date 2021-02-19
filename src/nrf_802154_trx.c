@@ -670,6 +670,7 @@ static void rx_antenna_update(void)
     }
 
     assert(result);
+    (void)result;
 }
 
 /**

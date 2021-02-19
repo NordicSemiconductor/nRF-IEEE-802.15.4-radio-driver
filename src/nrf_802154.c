@@ -116,7 +116,7 @@ void nrf_802154_channel_set(uint8_t channel)
 
     if (changed)
     {
-        nrf_802154_request_channel_update();
+        (void)nrf_802154_request_channel_update();
     }
 }
 

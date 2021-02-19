@@ -71,7 +71,9 @@ void nrf_802154_gpiote_init(void)
 
             nrf_802154_wifi_coex_cfg_3wire_get(&cfg);
 
+            // coverity[uninit_use]
             m_gpio_pin     = cfg.grant_cfg.gpio_pin;
+            // coverity[uninit_use]
             m_gpiote_ch_id = cfg.grant_cfg.gpiote_ch_id;
             assert(m_gpio_pin != COEX_GPIO_PIN_INVALID);
 
