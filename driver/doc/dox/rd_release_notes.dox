@@ -1,0 +1,517 @@
+/**
+
+@page rd_release_notes Release notes
+
+@tableofcontents
+
+This page lists the release notes for all the released versions of the nRF IEEE 802.15.4 radio driver.
+
+---
+@section rd_release_notes_190 Radio driver v1.9.0
+
+Release date: December 09, 2020
+
+This release introduces initial development support for the nRF53 SoC.
+It also includes an experimental implementation of the Coex and Antenna Diversity features.
+
+@par Migration guide
+
+Version v1.9.0 of the radio driver has the following new dependencies:
+  - nrfx v2 - in the previous releases the radio driver depended on version 1.x of nrfx
+  - nRF 802.15.4 Service Layer library - a new library implementing a set of services used by the 802.15.4 driver
+
+Two variants of the nRF 802.15.4 Service Layer are included with the nRF 802.15.4 Radio Driver release:
+  - a binary library (closed-source) - it implements all the services required for 802.15.4 operations, enabling all the 802.15.4 radio driver features:
+    - Multiprotocol support
+    - CSMA/CA support
+    - Front-end Module (FEM) support
+    - Delayed transmission and reception
+    - Timestamping
+  - an open-source library - it implements the services needed for basic 802.15.4 operations.
+
+The binary variant of the 802.15.4 Service Layer library depends on the MPSL revision 336495bdddef5702c84f1f48605578e48787b7dc: https://github.com/nrfconnect/sdk-nrfxlib/tree/f3256d1cf9add7ecc5d9f1da776e7344fdde2cc9/mpsl
+
+MPSL is a required dependency for dynamic multiprotocol operations.
+Dynamic multiprotocol with a SoftDevice is no longer supported.
+
+Select a Service Layer library variant depending on your project policy, licensing, and needs.
+
+The following files are no longer present in the 802.15.4 radio driver build:
+  - `src/nrf_802154_timer_coord.c`
+  - `src/rsch/nrf_802154_rsch.c`
+  - `src/rsch/nrf_802154_rsch_crit_sect.c`
+  - `src/timer_scheduler/nrf_802154_timer_sched.c`
+
+The following files must be added to the 802.15.4 radio driver build:
+  - `src/nrf_802154_debug_core.c`
+  - `src/nrf_802154_debug_gpio.c`
+  - `src/nrf_802154_queue.c`
+  - `src/nrf_802154_stats.c`
+  - `src/nrf_802154_trx.c`
+  - `src/mac_features/nrf_802154_ifs.c`
+
+For the nRF52 family of SoCs the following file must be added to the build:
+  - `src/nrf_802154_trx_ppi.c`
+
+For nRF53 family of SoCs the following file must be added to the build:
+  - `src/nrf_802154_trx_dppi.c`
+
+The `_direct.c` variant of some of the files has been deprecated for the full-featured variant of the SL library.
+If you have files with the `_direct.c` suffix in your build, replace them with their `_swi.c` variant:
+  - `src/nrf_802154_notification_swi.c`
+  - `src/nrf_802154_priority_drop_swi.c`
+  - `src/nrf_802154_request_swi.c`
+  - `src/nrf_802154_swi.c`
+
+For the open-source variant of the nRF 802.15.4 SL library, the following files must be added to the build:
+  - `nrf_802154_sl/open/src/nrf_802154_sl_ant_div.c`
+  - `nrf_802154_sl/open/src/nrf_802154_sl_coex.c`
+  - `nrf_802154_sl/open/src/nrf_802154_sl_fem.c`
+  - `nrf_802154_sl/open/src/nrf_802154_sl_log.c`
+  - `nrf_802154_sl/open/src/nrf_802154_sl_rsch.c`
+  - `nrf_802154_sl/open/src/nrf_802154_sl_timer.c`
+
+For the binary variant of the nRF 802.15.4 SL library, one of the variants found in the `nrf_802154_sl/lib` directory must be added to the build.
+
+The header files for `nrf_802154_sl` can be found in the `nrf_802154_sl/include` directory.
+
+The following platform port examples have been moved from `src/platform` to `nrf_802154_sl/platform` and must be added to the build accordingly:
+  - `clock`
+  - `hp_timer`
+  - `irq`
+  - `lp_timer`
+
+A new header file, that defines the API of the GPIOTE platform abstraction layer, was provided, along with two example implementations:
+  - `nrf_802154_sl/platform/gpiote/nrf_802154_gpiote_none.c`
+  - `nrf_802154_sl/platform/gpiote/nrf_802154_gpiote_zephyr.c`
+
+Depending on the application's target platform, either one of those files should be added to the build system or yet another implementation of the API should be provided.
+
+Each of the GPIOTE platform implementation examples should be added to the build alongside `nrf_802154_sl/platform/gpiote/nrf_802154_gpiote_crit_sect.c`.
+
+For the open-source variant of the SL library, the following platform abstractions must be removed from the build:
+  - `gpiote`
+  - `hp_timer`
+  - `lp_timer`
+
+@par  New features
+  - nRF5340 SoC support.
+  - Modulated carrier: the 802.15.4 radio continuously transmits back-to-back frames with PSDU selected by the higher layer.
+  - Getter of the current time.
+    It is needed to schedule the first delayed reception operation in a sequence.
+  - Statistics: counters and total duration of the selected radio operations.
+  - Experimental configurable Inter-Frame-Spacing.
+  - Experimental Coex module for coexistence with an external arbiter (PTA) entity using a three-wire coexistence interface.
+  - Experimental Antenna Diversity module.
+
+@par  Changes
+  - A new module, `nrf_802154_trx.c`, containing FSM.
+    It manages transceiver operations directly.
+    FSM in the `nrf_802154_core.c` file manages the requested 802.15.4 operations, while `nrf_802154_trx.c` manages the currently active operation.
+
+@par  Bug fixes
+  - Fixed GCC warning when building with GCC4.
+  - RSSI measurement request, right after the receiver is enabled, measures the correct RSSI value.
+  - Fixed increased power consumption in the example rng platform implementation.
+
+@par  Limitations
+  - The 802.15.4 SL library for the nRF53 is available only in the open-source variant.
+    As such, only basic single-protocol 802.15.4 operations are available for the nRF53 SoC:
+    - TX (with CCA, ACK)
+    - RX (with filtering, ACK)
+    - Energy Detection
+    - Continuous (unmodulated) carrier
+    - Sleep mode
+    - Promiscuous mode
+    For this reason, CSMA-CA support is not available for the nRF53 SoC
+  - The driver has been tested only with the default configuration, set in the `nrf_802154_config.h` file.
+    Test applications are compiled with optimizations for the code size.
+    Any other configuration and optimization level should be considered experimental.
+  - The number of supported peers for the Auto Pending Bit feature is limited to 127.
+  - In the multiprotocol configuration, the application cannot use IRQ priority levels 2 and 3.
+  - The delayed operations do not detect delays caused by the ISR latency.
+    Because of the ISR latency, the delayed transmission might be delayed for too long, or the reception window might be shorter than the requested length for the delayed transmission operation.
+    To avoid these problems, it is recommended to minimize the ISR latency of the RTC instance that is used by the `lp_timer` module.
+
+@par Known issues
+  - If the `NRF_802154_USE_RAW_API` is disabled, any frame pointer passed by the transmission result notifications will be invalid.
+    - Workaround: Enable `NRF_802154_USE_RAW_API` if the code relies on the passed pointer.
+  - Deinitialization of the driver works incorrectly.
+    - There is no known workaround for this bug.
+  - When the driver is waiting for an ACK, calling the API of the driver in a loop causes the waiting for an ACK to last indefinitely.
+    This leads to an assertion fault.
+    - Workaround: Do not call the API of the driver until the last transmission request sends a notification of success or failure.
+  - CSMA-CA operation causes an assertion fault when the driver is configured to use the open-source variant of the SL library.
+    - There is no known workaround for this bug.
+
+
+---
+@section rd_release_notes_180 Radio driver v1.8.0
+
+Release date: August 21, 2020
+
+This release introduces an abstraction layer for interrupt handling.
+It also includes several minor bug fixes.
+
+@par Migration guide
+
+The v1.8.0 release provides a new header file that defines the API of IRQ platform abstraction layer along with two example implementations:
+  - `src/platform/irq/nrf_802154_irq_baremetal.c`
+  - `src/platform/irq/nrf_802154_irq_zephyr.c`
+
+Depending on the application's target platform, either one of those files should be added to the build system or yet another implementation of the API should be provided.
+
+Moreover, only a single implementation of API defined in `src/platform/nrf_802154_lp_timer.h` is provided:
+  - `src/platform/lp_timer/nrf_802154_lp_timer.c`
+
+Any other implementation used by the build system should be replaced with the above file.
+
+@par  New features
+  - Added interrupt handling abstraction layer for easier integration with operating systems.
+
+@par  Changes
+  - Modified default GPIO debug pin-out (details in `src/nrf_802154_debug.h`).
+  - Modified default FEM PDN pin from P0.24 to P0.13.
+
+@par  Bug fixes
+  - Removed unused peripheral macros.
+  - Various documentation fixes.
+
+@par  Limitations
+  - The driver is tested only with the default configuration (that is, without changes in the `nrf_802154_config.h` file).
+    Test applications are compiled with optimizations for the code size.
+    Any other configuration and optimization level is to be considered as experimental.
+  - The number of supported peers for the Auto Pending Bit feature is limited to 127.
+  - In the multiprotocol configuration (SoftDevice RAAL), the application cannot use IRQ priority levels 2 and 3.
+  - The delayed operations do not detect delays caused by the ISR latency.
+    Because of the ISR latency, the delayed transmission might be delayed for too long, or the reception window might be shorter than requested for the delayed transmission operation.
+    To avoid such problems, it is recommended to minimize the ISR latency of the RTC instance that is used by the `lp_timer` module.
+
+@par Limitations of simultaneous operation of the SoftDevice front end and the 802.15.4 front end
+  - Do not use the PPI channels reserved by the SoftDevice.
+    The S140 SoftDevice v7.0.1 reserves PPI channels 17-31.
+    Check the definition of the `NRF_SOC_SD_PPI_CHANNELS_SD_ENABLED_MSK` macro in the `nrf_soc.h` file to verify the list of reserved PPI channels.
+  - The SoftDevice and the 802.15.4 driver must use separate sets of PPI channels, for example (1, 2) and (3, 4).
+  - The SoftDevice and the 802.15.4 driver must use separate sets of GPIOTE channels, for example 4 and (6, 7).
+
+@par Known issues
+  - The stress tests procedure with MTBF over 70 hours and with code compiled with both Keil 5.25 and IAR 7.80.4 produced SoftDevice faults that result in device reset.
+    Other stability tests did not end with such faults, including stress tests with firmware compiled by GCC.
+    - There is no known workaround for this bug.
+  - If `NRF_802154_USE_RAW_API` is disabled, a pointer to a frame passed by the transmission result notifications is invalid.
+    - Workaround: Enable `NRF_802154_USE_RAW_API` if the code relies on the passed pointer.
+  - Deinitialization during the transmission procedure works incorrectly.
+    - Workaround: Enter sleep state before the deinitialization.
+  - Deinitialization of the driver works incorrectly in the multiprotocol configuration (simulator or SoftDevice RAAL).
+    - There is no known workaround for this bug.
+  - Calling the API of the driver in a loop when the driver is waiting for an ACK causes the waiting for an ACK to last indefinitely, which leads to an assertion fault.
+    - Workaround: Do not call the API of the driver until the last transmission request sends a notification of success or failure.
+
+
+---
+@section rd_release_notes_161 Radio driver v1.6.1
+
+Release date: December 9, 2019
+
+This is a bugfix release that fixes problems found in version 1.6.0.
+
+@par Bug fixes
+  - Fixed a spelling issue in the FEM GPIO macro.
+  - Fixed an issue where building with GCC4 compiler was not possible.
+  - Fixed an issue where the CPU would be halted during the frame reception and the FEM would be disabled.
+  - Fixed an issue where a shared PPI channel would not be cleared when the driver stopped using it.
+  - Fixed an issue where PPI and TIMER HAL types were not cast explicitly.
+
+
+---
+@section rd_release_notes_160 Radio driver v1.6.0
+
+Release date: October 3, 2019
+
+This release introduces support for three-pin front-end modules, adds native support for S140 SoftDevice v7.0.1, and implements a new algorithm that manages Pending Bits in the acknowledgments according to the Zigbee protocol requirements.
+
+The defines that contain the revision number of the chip are now removed, which simplifies porting the 802.15.4 driver between Nordic chips.
+However, this means that the first engineering version of the nRF52840 device (nRF52840 IC revision Engineering A) is no longer supported.
+See [IC revisions and variants](https://infocenter.nordicsemi.com/index.jsp?topic=%2Fcomp_matrix_nrf52840%2FCOMP%2Fnrf52840%2FnRF52840_ic_revision_overview.html) for more details.
+
+Additionally, this release includes several bug fixes.
+
+@par Migration guide
+
+The v1.6.0 release provides a new header file that contains the configuration of all peripherals used by the 802.15.4 driver.
+Add the following file to the build system:
+  - `src/nrf_802154_peripherals.h`
+
+Because of the refactoring of the chip revision management, the following source file has been deleted and must be removed from the build system:
+  - `src/nrf_802154_revision.c`
+
+@par New features
+  - Added support for three-pin front-end modules.
+  - Added an algorithm that manages Pending Bits in the acknowledgments in the Zigbee protocol.
+  - Added a new random number generator platform that uses a reentrant function from the newlib library.
+  - Added stubs for the Wi-Fi coexistence functionality.
+
+@par Changes
+  - Removed defines that contain the revision of the chip and removed support for the Engineering A revision of the nRF52840 device.
+  - Updated supported S140 SoftDevice to v7.0.1.
+  - Gathered the peripheral usage information that was previously scattered across all modules into a single header file.
+
+@par Bug fixes
+  - Removed the possibility of uninitialized pointer access.
+  - Fixed header path of the SoftDevice module that provides random number generator functions.
+
+
+---
+@section rd_release_notes_150 Radio driver v1.5.0
+
+Release date: August 9, 2019
+
+This release provides a new feature that enables the next higher layer to cancel the delayed operations.
+When a delayed transmission or a delayed reception is scheduled, it can be canceled.
+This functionality is needed for the implementation of CSL for multiple links.
+
+Additionally, this release includes several bug fixes.
+
+@par New features
+  - Added the option for canceling the scheduled delayed transmissions and receptions.
+  - Added the measurement of RSSI during the idle or active reception.
+
+@par Changes
+  - Modified the mechanism for extending the delayed reception window.
+    Now, the window is extended only by the time needed to receive the detected frame (and acknowledge the reception if requested).
+    - Previously, the delayed reception window was extended automatically at the start of the reception process, based on the assumption that the detected frame is going to have the maximum possible length (127 bytes of PSDU).
+  - Updated the configuration of PA/LNA pins for nRF52811 to match the pin-out of the nRF52840 development kit.
+
+@par Bug fixes
+  - Fixed several race conditions in the multi-protocol configuration.
+  - Fixed an issue with the `BKPT` instruction that would cause faults that led to resets and prevented postmortem debugging.
+    Now, the `BKPT` instruction must be enabled with `ENABLE_DEBUG_ASSERT_BKPT` and is called only in the debug configuration.
+  - Fixed the incorrect IRQ priority value for the example clock driver provided with the driver source code by changing it from 10 to 7.
+    It is now within the acceptable MCU range.
+  - Added a missing public function for clearing the IE data stored for the Enh-Ack frames.
+  - Fixed the compiler warning about the uninitialized pointer access in the NDEBUG configuration.
+
+
+---
+@section rd_release_notes_140 Radio driver v1.4.0
+
+Release date: June 7, 2019
+
+This release provides multiple minor updates.
+The most significant ones are the new pseudo-random number generator abstraction layer and the new Front End Module abstraction layer that are intended to ease porting of the driver to RTOSes.
+Moreover, thanks to many fixes in this area, the release contains robust delayed transmission and delayed reception operations.
+
+@par Migration guide
+
+The release v1.4.0 provides new files that must be added to the build system:
+  - `src/platform/random/nrf_802154_random_stdlib.c` - an example implementation of the pseudo-random number abstraction layer that uses the `rand()` function from the standard library.
+  - `src/fal/nrf_802154_fal.c` - an initial implementation of the Front End Module abstraction layer.
+
+Due to some optimizations, one source file is deleted and must be removed from the build system:
+  - `src/nrf_802154_ack_pending_bit.c`
+
+@par New features
+  - Created a pseudo-random number generator abstraction layer in the platform directory.
+  - Implemented a new Front End Module Abstraction Layer (FAL) component.
+  - Added a TX power setting to the continuous carrier operation.
+  - Provided an implementation of the `assert()` function for the ARMCC compiler to facilitate the debugging process.
+  - Added a BKPT instruction to the assert handlers.
+  - Replaced the internal RADIO HAL (`nrf_radio.h`) implementation with the implementation provided by the [nrfx](https://github.com/NordicSemiconductor/nrfx) project.
+
+@par Bug fixes
+  - A request to transit to the RX state while the core already is in the RX state is correctly notified to the requester.
+  - After a delayed transmission or a delayed reception, the driver enters the RX state regardless of the result of the delayed operation.
+  - The delayed reception timeout handler preempted by the RADIO ISR handler does not lead to the undefined module state.
+  - A single delayed reception triggers just one notification indicating the end of the procedure.
+  - The driver core processes notifications from the radio scheduler regardless of the state of the core.
+    This makes delayed operations robust.
+  - Simplified the lp_timer handling when adding a timer that should fire immediately.
+  - Update of the ACK Information Elements for an already registered address is possible.
+  - Pending bits in the ACK frames are handled by the `ack_data` module like the Information Elements.
+  - The initialization of the FEM module configures only these peripherals that are used by the module in the given runtime configuration.
+  - The types of variables holding LQI values are unified to `uint8_t`.
+  - The driver built without compiler optimizations does not hang during the initialization procedure.
+  - Corrected the names of variables storing 802.15.4 frames.
+  - Removed implicit conversions of the integer signedness in the ACK generator module.
+  - Added missing subdirectories to the paths of the included header files.
+  - Removed copies of dependencies from the repository.
+
+
+---
+@section rd_release_notes_130 Radio driver v1.3.0
+
+Release date: February 4, 2019
+
+This release offers support for a new chip: nRF52811.
+Additionally, it adds a parser and generator for Enhanced Acks.
+It also includes fixes to bugs that have been found since the last release.
+
+@par New features
+  - Added a generator of Enhanced Acks and improved parsing of IEEE 802.15.4-2015 frames.
+  - Provided support for a new chip: nRF52811.
+  - Added a configuration option to delay CCA operations during the CSMA-CA procedure until a timeslot is granted by an arbiter.
+
+@par Bug fixes
+  - Timeslots are actively released when the higher layer requests a transition to the sleep state.
+    Passive releasing of timeslots was found to be a source of failed operations.
+    Operations were failing when the higher layer requested an operation a short time (less than 15 ms) after it requested a transition to the sleep state.
+
+
+---
+@section rd_release_notes_123 Radio driver v1.2.3
+
+Release date: December 20, 2018
+
+This is a bugfix release that fixes problems found in version 1.2.2 and contains refactoring of the RSCH module.
+This release also includes an experimental version of the delayed RX feature.
+This feature is intended to be used by duty-cycling receivers like Zigbee Green Power, CSL, or TSCH devices.
+
+@par Bug fixes
+  - Fixed a SoftDevice RAAL problem caused by clocks drift.
+  - Improved protocol switching performance.
+  - Fixed handling of invalid frames in the promiscuous mode.
+  - Fixed logging in the SoftDevice RAAL module.
+
+@par External dependencies changes
+  - Updated SoftDevice headers and documentation to version S140 v6.1.1.
+    Note that the 802.15.4 radio driver is compatible with SoftDevices S140 v5.0.0, v6.0.0, v6.1.0, and v6.1.1.
+
+@par Build system updates
+  - Added a code style checker based on uncrustify.
+  - Enhanced on-target tests.
+
+@par Experimental features
+  - Delayed receive window.
+
+@par Refactoring
+  - Support for priority levels and an external arbiter in the RSCH module.
+  - Added a confirmation sent to the RAAL module informing that the ongoing timeslot has ended.
+
+
+---
+@section rd_release_notes_122 Radio driver v1.2.2
+
+Release date: October 22, 2018
+
+This is a bugfix release that fixes problems found in version 1.2.1.
+
+@par Bug fixes
+  - Return success on transition requests to the RX state or the sleep state whenever applicable.
+  - Changed the default configuration of the Front End module to not use the PPI channels reserved by the SoftDevice.
+  - Reduced the default timeout delay when receiving an Ack frame to avoid unnecessary retransmissions and lost frames.
+  - Fixed the list of allowed transmission power values to match nRF52840 Rev 1 capabilities.
+
+
+---
+@section rd_release_notes_121 Radio driver v1.2.1
+
+Release date: September 7, 2018
+
+This release fixes build problems in some configurations and allows to run the driver with platforms that modify NVIC settings of the RTC used by the driver, which allows for managing critical sections.
+
+@par Bug fixes
+  - Fix the build with CSMA-CA disabled.
+  - RTC interrupt is now preserved while leaving critical sections.
+
+
+---
+@section rd_release_notes_120 Radio driver v1.2.0
+
+Release date: August 20, 2018
+
+This release contains a new major feature: delayed transmission.
+The driver can schedule one frame to transmit it at a requested time.
+It is used by higher-layer features like CSL, TSCH, or ZigBee GP Proxy.
+The release also includes fixes to bugs found since the last release.
+
+Timestamps of received frames are improved in this release to make the delayed transmission reliable.
+A new platform abstraction of the high precision (HP) timer was introduced to enhance the precision of timestamps.
+
+@par New features
+  - New Radio Scheduler module responsible for radio preconditions management and delayed transmission scheduling.
+  - New module for managing delayed transmissions.
+  - Renamed the Timer platform abstraction to the Low power (LP) timer.
+  - High precision (HP) timer platform abstraction is now used to provide the exact timestamp of a received frame.
+  - Timer coordinator module responsible for coordination and synchronization between LP and HP timers.
+  - Improved filtering of received frames destined to the PAN Coordinator node.
+  - Reduced number of compare channels used by simulator and SoftDevice RAALs.
+  - Reduced timeslot margin duration.
+  - New function for requesting transition to sleep state only if the radio is idle (i.e. idle listening).
+
+@par External dependencies changes
+  - Updated SoftDevice headers and documentation to version s140 v6.1.0.
+    Note that the 802.15.4 radio driver is compatible with SoftDevice s140 v5.0.0, v6.0.0, and v6.1.0.
+
+@par Bug fixes
+  - Reduced power usage in the sleep state caused by TIMER peripherals.
+  - Passing correct NULL pointer value in the notification of a transmitted frame.
+  - Fixed unaligned memory access in the extended address compare procedure.
+  - Corrected calculation of timeslot margin time when operating on LFClk with high PPM (i.e. RC oscillator).
+  - Prevented double initialization of a requested procedure on timeslot start.
+  - Fixed races related to timer scheduler dependants.
+  - Prevented reentrancy of SWI notification functions - source of race conditions.
+  - Fixed double notification of a received frame when the timeslot ends during transmission of an Ack frame.
+  - Optimized time format conversions.
+  - Fixed race when a transmission request terminates ongoing transmission procedure.
+  - Fixed reset of PA/LNA GPIO pins on timeslot end.
+
+
+---
+@section rd_release_notes_110 Radio driver v1.1.0
+
+Release date: April 4, 2018
+
+This release contains new features to correct and calculate RSSI-related values (like LQI, Energy Detection result, CCA Energy Threshold).
+It also includes fixes to bugs found since the last release.
+
+To correct RSSI-based values, a new platform abstraction for temperature measurement is provided (see `src/platform/temperature` directory).
+RSSI is corrected by a temperature-related factor.
+
+@par New features
+  - Temperature measurement platform abstraction used to provide RSSI corrections.
+  - Automatic correction of RSSI-based values.
+  - Function to calculate CCA ED threshold from a given dBm value.
+
+@par External dependencies changes
+  - Updated SoftDevice headers and documentation to version s140 v6.0.0.
+    Note that the 802.15.4 radio driver is compatible with SoftDevice s140 v5.0.0 and v6.0.0.
+
+@par Bug fixes
+  - CSMA-CA and Automatic RX ACK procedures notify errors even if they could not enter a critical section during notification.
+  - Received frame is reported to the MAC layer when ACK transmission is terminated.
+  - The driver core is correctly deinitialized with the Single-PHY RAAL.
+  - Fixed IAR warnings with FEM enabled.
+  - Fixed GCC warnings with NDEBUG compilation flag enabled.
+  - Fixed GCC warnings with -Wunused-parameter flag enabled.
+  - Prevented enabling RADIO IRQ in critical sections - source of race conditions.
+  - Synchronized states in the driver core and the RAAL modules on timeslot exit - source of race conditions.
+  - Changed order of setting states when new timeslot is requested in the SoftDevice RAAL module - source of race conditions.
+
+
+---
+@section rd_release_notes_100 Radio driver v1.0.0
+
+Release date: March 12, 2018
+
+This is the first official release of the nRF IEEE 802.15.4 radio driver.
+
+@par New features
+  - Reception of unicast and broadcast frames
+  - Automatic transmission of ACK frames
+  - Setting a pending bit in the ACK frame according to availability of pending data for the given destination
+  - Filtering of received frames (according to IEEE-802.15.4-2006 and partially 2015)
+  - Promiscuous mode
+  - Transmission of unicast and broadcast frames
+  - Automatic CCA procedure before transmission
+  - CSMA-CA procedure
+  - Automatic receiving of ACK frames
+  - Handling time-out of automatic receiving of ACK frames
+  - Stand-alone CCA procedure
+  - Low power mode (sleep)
+  - Energy detection
+  - Continuous carrier transmission (for radio testing)
+  - Dynamic multiprotocol support
+  - Front-end modules support
+  - Providing diagnostic information (i.e. CRC errors, received invalid frames, received frames with mismatching destination address)
+
+*/

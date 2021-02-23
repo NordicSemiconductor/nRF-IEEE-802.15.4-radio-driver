@@ -1,0 +1,50 @@
+@startuml
+participant Hardware as hw
+participant Antenna_diversity as ad
+participant Driver as drv
+participant API
+
+API -> drv : request\nenergy detection
+
+activate drv
+    drv -> ad : notify_request
+    activate ad
+        ad -> drv : update\nrequest time
+    deactivate ad
+    drv -> hw : start\nenergy detection
+deactivate drv
+
+... Energy detection\nprocedure ...
+
+hw -> drv : energy detection\nfinished
+activate drv
+
+    drv -> ad : notify_finish
+    activate ad
+        ad -> drv : request_repeat
+    deactivate ad
+
+deactivate drv
+
+drv -> drv : request\nenergy detection
+activate drv
+    drv -> ad : notify_request
+    activate ad
+        ad -> ad : change antenna
+        ad -> drv : update\nrequest time
+    deactivate ad
+
+    drv -> hw : start\nenergy detection
+deactivate drv
+
+... Energy detection\nprocedure ...
+
+hw -> drv : energy detection\nfinished
+activate drv
+    drv -> ad : notify_finish
+    activate ad
+        ad -> drv : ok
+    deactivate ad
+drv -> API : report result
+deactivate drv
+@enduml

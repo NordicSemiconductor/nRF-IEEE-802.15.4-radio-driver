@@ -1,0 +1,69 @@
+@startuml
+
+'Typical coex signalling during frame transmission with ACK reception
+'Exact moment of request is irrelevant now
+
+concise "RADIO" as radio
+robust "REQUEST" as request
+robust "PRIORITY" as priority
+robust "GRANT" as grant
+
+request has 1
+request has 0
+
+priority has 1
+priority has 0
+
+grant has 1
+grant has 0
+
+!$request_inactive = 0
+!$request_active = 1
+
+!$priority_none = 1
+!$priority_rx = 1
+!$priority_tx = 0
+
+!$grant_inactive = 1
+!$grant_active = 0
+
+'Initial state
+@0
+radio is {-}
+request is $request_inactive
+priority is $priority_none
+grant is $grant_inactive
+
+@+10
+priority is $priority_tx
+request is $request_active
+
+@+10
+grant is $grant_active
+
+'Frame transmission starts
+@+10
+radio is "TX FRAME"
+
+@+50
+radio is {-}
+'Frame transmission ended
+
+'Switching to rx ack
+@+10
+priority is $priority_rx
+
+'ACK reception
+@+10
+radio is "RX ACK"
+
+'ACK reception finished
+@+30
+radio is {-}
+request is $request_inactive
+priority is $priority_none
+
+@+10
+grant is $grant_inactive
+
+@enduml

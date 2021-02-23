@@ -1,0 +1,29 @@
+@startuml
+concise "Radio" as radio
+robust "antenna" as a
+
+scale 30 as 50 pixels
+
+a has tx_ant,rx_ant,unspecified
+
+radio is disabled
+a is unspecified
+
+@radio
+
+0 is RX_IDLE
+radio -> a: set_rx_antenna
+50 is RECEIVE
+190 is RX_IDLE
+230 is TRANSMIT
+radio -> a: set_tx_antenna
+400 is RX_IDLE
+radio -> a: set_rx_antenna
+450 is disabled
+
+@a
+0 is rx_ant
+230 is tx_ant
+400 is rx_ant
+450 is unspecified
+@enduml

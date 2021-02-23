@@ -1,0 +1,10 @@
+### Links
+#"<a href=\"\" target=\"_blank\"></a>"
+
+
+## Nordic - always use https!
+ALIASES += \
+linknordic="<a href=\"https://www.nordicsemi.com\" target=\"_blank\">nordicsemi.com</a>" \
+linkRFFEM21540="<a href=\"https://www.nordicsemi.com/Products/Low-power-short-range-wireless/nRF21540 \" target=\"_blank\">nRF21540</a>" \
+link21540PS="<a href=\"https://infocenter.nordicsemi.com/topic/ps_nrf21540/chapters/pin/doc/frontpage.html \" target=\"_blank\">nRF21540 Product Specification</a>" \
+

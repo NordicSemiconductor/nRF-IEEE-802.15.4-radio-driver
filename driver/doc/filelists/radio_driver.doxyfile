@@ -1,0 +1,15 @@
+INPUT += \
+dox/rd_release_notes.dox \
+dox/01_mainpage.dox \
+dox/architecture.dox \
+dox/features_description.dox \
+dox/hardware_resources.dox \
+dox/source_files.dox \
+dox/antenna_diversity.dox \
+dox/radio_driver_coex.dox \
+dox/front_end_module.dox \
+dox/debug_mode.dox \
+dox/multiprotocol_support.dox \
+../src/nrf_802154.h \
+../src/nrf_802154_types.h \
+../src/nrf_802154_config.h \

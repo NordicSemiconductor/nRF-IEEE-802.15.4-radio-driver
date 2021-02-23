@@ -1,0 +1,18 @@
+@startuml
+[*] --> Sleep
+state RX{
+[*] --> Toggle
+Toggle: Switch between antennas in constant intervals
+Toggle --> RSSI_1: Preamble detected
+RSSI_1: Wait for RSSI value to settle
+RSSI_1 --> RSSI_2: Measure RSSI \n Switch antenna
+RSSI_2: Wait for RSSI value to settle
+RSSI_2 --> Idle: Measure RSSI \n Select best antenna
+Idle: Wait for timeout or framestart
+Idle --> Frame_RX: Framestart detected
+Idle --> Toggle: Timeout
+Frame_RX --> Toggle: RX end
+}
+Sleep --> RX: Enable RX
+RX --> Sleep: Disable RX
+@enduml

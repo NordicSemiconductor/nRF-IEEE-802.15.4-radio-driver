@@ -1,0 +1,96 @@
+@startuml
+
+'Diagram showing moment of coex request for transmission using csmaca
+'when tx_req_mode = NRF_802154_COEX_TX_REQUEST_MODE_CCA_START
+
+concise "radio driver" as drv
+concise "RADIO" as radio
+robust "REQUEST" as request
+robust "PRIORITY" as priority
+robust "GRANT" as grant
+
+request has 1
+request has 0
+
+priority has 1
+priority has 0
+
+grant has 1
+grant has 0
+
+!$request_inactive = 0
+!$request_active = 1
+
+!$priority_none = 1
+!$priority_rx = 1
+!$priority_tx = 0
+
+!$grant_inactive = 1
+!$grant_active = 0
+
+'Initial state
+@0
+drv is {-}
+radio is {-}
+request is $request_inactive
+priority is $priority_none
+grant is $grant_inactive
+
+'Frame reception starts
+@+10
+drv is "Initial backoff"
+radio is {-}
+@+40
+drv is {-}
+priority is $priority_tx
+request is $request_active
+@+10
+grant is $grant_active
+@+0
+
+drv is "CCA"
+radio is "CCA"
+@+10
+radio -> drv: \nChannel busy
+
+drv is "Backoff"
+radio is {-}
+@+50
+
+drv is "CCA"
+radio is "CCA"
+@+10
+radio -> drv: \nChannel busy
+
+drv is "Backoff"
+radio is {-}
+@+50
+
+drv is "CCA"
+radio is "CCA"
+@+10
+radio -> drv: \nChannel clear
+
+drv is "TX Frame"
+radio is "TX Frame"
+@+30
+
+drv is {-}
+radio is {-}
+@+10
+
+priority is $priority_rx
+@+10
+
+radio is "RX ACK"
+@+10
+
+radio is {-}
+priority is $priority_none
+request is $request_inactive
+drv is {-}
+
+@+10
+grant is $grant_inactive
+
+@enduml

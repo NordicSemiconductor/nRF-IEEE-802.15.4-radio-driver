@@ -1,0 +1,36 @@
+@startuml
+concise "Radio" as radio
+robust "antenna" as a
+concise "Antenna diversity module" as ant
+
+scale 10 as 50 pixels
+
+radio is disabled
+ant is idle
+a is 0
+
+@radio
+
+0 is RX_IDLE
+10 is preamble
+190 is RX_IDLE
+radio->ant : TIMEOUT
+
+@ant
+0 is toggle
+10 is rssi_settle
+50 is rssi_settle
+65 is idle
+ant -> a : Select best antenna
+215 is toggle
+
+@a
+25 is 1
+230 is 0
+@10 <-> @190 : 180 us - configurable
+@190 <-> @230 : 40 us - configurable
+
+highlight 10 to 10.1 #LightGrey;line:DimGrey : SW lag \n 40-50 us
+highlight 50 to 50.1 #LightRed;line:DimGrey : RSSI measurement \n 200 ns
+highlight 65 to 65.1 #LightRed;line:DimGrey : \nRSSI measurement \n 200 ns
+@enduml

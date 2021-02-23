@@ -1,0 +1,62 @@
+/**
+
+@page rd_hw_resources Hardware resources
+
+@tableofcontents
+
+The nRF IEEE 802.15.4 radio driver requires some hardware resources to operate correctly.
+
+@section rd_hw_resources_peripherals_directly Peripherals used by the driver directly
+
+The driver uses several peripherals directly:
+- RADIO - Can be shared with arbitration in multiprotocol configuration.
+- 2 TIMER peripherals - TIMER0 can be shared with arbitration in multiprotocol configuration.
+- 1 EGU - Channel 15 (or all channels in multiprotocol configuration).
+- 7 PPI channels.
+- 1 PPI group.
+
+
+---
+@section rd_hw_resources_peripherals_optional Peripherals used by optional driver modules
+
+There are several modules that can be enabled or disabled in the driver and that consume additional resources when enabled:
+- @ref ant_diversity
+    - 1 PPI channel
+    - 1 GPIOTE channel
+    - 1 GPIO pin
+    - 1 TIMER
+- @ref rd_fem "FEM"
+    - 3-pin GPIO variant
+        - 3 PPI channels
+        - 3 GPIOTE channel
+        - 3 GPIO pins
+    - simple GPIO variant
+        - 2 PPI channels
+        - 2 GPIOTE channel
+        - 2 GPIO pins
+
+
+---
+@section rd_hw_resources_abstraction Functionalities provided by the platform abstraction
+
+The driver also uses some peripherals indirectly through platform abstraction API:
+- Clock - needed to make sure high frequency clock is enabled during RADIO operations.
+- GPIOTE - used by the coex interface to abort transmission if PTA denies RF access.
+- IRQ - needed for indirect access to interrupt controller to manage interrupts for used peripherals.
+- Random - needed to generate random backoff for CSMA-CA.
+- Temperature - provides temperature data for RSSI correction.
+- Timer:
+    - Low frequency - Used by features like CSMA-CA, ACK timeout, or timestamps of received frames.
+    - High precision - Used by features like received frame timestamps.
+
+The platform or the application must provide an implementation of each of the driver's platform abstraction APIs.
+Example implementations are located in the `src/platform` directory.
+
+@note
+For nRF Connect SDK, official implementations are present in `nrf/drivers/nrf_802154_sl/src/platform/` and `modules/hal/nordic/drivers/nrf_radio_802154/src/platform/` directories.
+
+You can select one of the example implementations for each of platform abstraction APIs.
+You can also implement platform abstraction API in any other module instead of using the provided example.
+
+
+*/

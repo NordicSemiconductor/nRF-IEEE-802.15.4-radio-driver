@@ -1,0 +1,40 @@
+@startuml
+
+'Diagram showing moment of coex request for reception
+'when rx_req_mode = NRF_802154_COEX_RX_REQUEST_MODE_DESTINED
+
+concise "RADIO" as radio
+robust "REQUEST" as request
+
+request has 1
+request has 0
+
+
+!$request_inactive = 0
+!$request_active = 1
+
+'Initial state
+@0
+radio is {-}
+request is $request_inactive
+
+@+10
+'Frame reception starts
+
+radio is "SHR"
+@+10
+
+@+30
+
+radio is "PHR"
+@+20
+
+radio is "PSDU"
+@+30
+request is $request_active
+@+70
+
+radio is {-}
+
+
+@enduml

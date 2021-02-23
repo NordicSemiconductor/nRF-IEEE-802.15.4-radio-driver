@@ -1,0 +1,4 @@
+name: hal-nrf-802154
+build:
+  cmake-ext: True
+  kconfig-ext: True

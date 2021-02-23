@@ -1,0 +1,42 @@
+/**
+
+@page rd_debug_mode Logs
+
+@tableofcontents
+
+The driver implements a debug logging feature. Event logs are stored in the RAM memory.
+
+The logs can be retrieved from RAM by a debugger and decoded to a sequence diagram with the provided `decoder.html` utility.
+You can find this utility in the `tools/event_decoder` directory.
+
+To enable this feature, add the @c ENABLE_DEBUG_LOG define option while compiling the sources.
+
+---
+@section rd_debug_mode_extracting Extracting driver logs using GDB
+
+To extract driver logs using GDB, run the following commands:
+
+@code
+set print elements 0
+set print repeats unlimited
+set pagination off
+set height unlimited
+
+p/z nrf_802154_debug_log_buffer
+p nrf_802154_debug_log_ptr
+@endcode
+
+
+---
+@section rd_debug_mode_sequence_diag Creating a sequence diagram based on the extracted logs
+
+The sequence diagram based on the logs can be useful for debugging purposes.
+To create it, complete the following steps:
+-#. Copy the output of `nrf_802154_debug_log_buffer` to the GDB Log area in the `decoder.html` utility.
+-#. Copy the @c nrf_802154_debug_log_ptr value to the Index pointer field in `decoder.html`.
+    @image html event_decoder_input.png "Event decoder - input form"
+-#. Click Generate sequence diagram. The sequence diagram will be generated automatically.
+
+@image html event_decoder_sequence_diagram.png "Event decoder - sequence diagram"
+
+*/

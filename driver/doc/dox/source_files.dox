@@ -1,0 +1,177 @@
+/**
+
+@page rd_source_files Source files
+
+@tableofcontents
+
+The driver supports multiple @ref rd_multiprotocol_support "radio arbiters".
+Depending on the selected arbiter, you must use a different set of files for the driver build:
+- @ref rd_source_files_core.
+  These files are used with all the implementations of the platform API.
+- @ref rd_source_files_abstraction.
+
+
+---
+@section rd_source_files_core Core files
+
+The following are the core files of the radio driver:
+
+- Source files:
+    - `nrf_802154.c`
+    - `nrf_802154_core.c`
+    - `nrf_802154_core_hooks.c`
+    - `nrf_802154_critical_section.c`
+    - `nrf_802154_debug.c`
+    - `nrf_802154_debug_core.c`
+    - `nrf_802154_debug_gpio.c`
+    - `nrf_802154_notification_swi.c`
+    - `nrf_802154_pib.c`
+    - `nrf_802154_priority_drop_swi.c`
+    - `nrf_802154_queue.c`
+    - `nrf_802154_request_swi.c`
+    - `nrf_802154_rssi.c`
+    - `nrf_802154_rx_buffer.c`
+    - `nrf_802154_stats.c`
+    - `nrf_802154_swi.c`
+    - `nrf_802154_trx.c`
+    - `fal/nrf_802154_fal.c`
+    - `mac_features/nrf_802154_csma_ca.c`
+    - `mac_features/nrf_802154_delayed_trx.c`
+    - `mac_features/nrf_802154_filter.c`
+    - `mac_features/nrf_802154_frame_parser.c`
+    - `mac_features/nrf_802154_ifs.c`
+    - `mac_features/nrf_802154_precise_ack_timeout.c`
+    - `mac_features/ack_generator/nrf_802154_ack_data.c`
+    - `mac_features/ack_generator/nrf_802154_ack_generator.c`
+    - `mac_features/ack_generator/nrf_802154_enh_ack_generator.c`
+    - `mac_features/ack_generator/nrf_802154_imm_ack_generator.c`
+
+- Header files:
+    - `nrf_802154.h`
+    - `nrf_802154_config.h`
+    - `nrf_802154_const.h`
+    - `nrf_802154_core.h`
+    - `nrf_802154_core_hooks.h`
+    - `nrf_802154_critical_section.h`
+    - `nrf_802154_debug.h`
+    - `nrf_802154_debug_core.h`
+    - `nrf_802154_debug_log.h`
+    - `nrf_802154_debug_log_codes.h`
+    - `nrf_802154_notification.h`
+    - `nrf_802154_nrfx_addons.h`
+    - `nrf_802154_peripherals.h`
+    - `nrf_802154_pib.h`
+    - `nrf_802154_procedures_duration.h`
+    - `nrf_802154_queue.h`
+    - `nrf_802154_request.h`
+    - `nrf_802154_rssi.h`
+    - `nrf_802154_rx_buffer.h`
+    - `nrf_802154_stats.h`
+    - `nrf_802154_swi.h`
+    - `nrf_802154_trx.h`
+    - `nrf_802154_types.h`
+    - `nrf_802154_utils.h`
+    - `fal/nrf_802154_fal.h`
+    - `mac_features/nrf_802154_ack_timeout.h`
+    - `mac_features/nrf_802154_csma_ca.h`
+    - `mac_features/nrf_802154_delayed_trx.h`
+    - `mac_features/nrf_802154_filter.h`
+    - `mac_features/nrf_802154_frame_parser.h`
+    - `mac_features/nrf_802154_ifs.h`
+    - `mac_features/ack_generator/nrf_802154_ack_data.h`
+    - `mac_features/ack_generator/nrf_802154_ack_generator.h`
+    - `mac_features/ack_generator/nrf_802154_enh_ack_generator.h`
+    - `mac_features/ack_generator/nrf_802154_imm_ack_generator.h`
+    - `platform/random/nrf_802154_random.h`
+    - `platform/temperature/nrf_802154_temperature.h`
+
+The radio driver also uses Hardware Access Layer files from the nrfx driver.
+
+---
+@section rd_source_files_abstraction Platform abstraction files
+
+The application or platform must provide indirect access to some of the peripherals or the functionalities by defining the platform API.
+
+Multiple implementation examples of each of the platform APIs are provided, together with the driver source code.
+You can use only one of these implementation examples at a time.
+For instance, do not use both the `nrf_802154_clock_nodrv.c` and the `nrf_802154_clock_sdk.c` in the same project.
+Select only one of them or provide the clock abstraction implementation through any of the other modules used in your project.
+
+@par Pseudorandom Number Generator
+    - `platform/random/nrf_802154_random_stdlib.c` - uses the `rand()` function from the standard C library.
+      The implementation of the standard library can make the `rand()` function either reentrant or non-reentrant.
+	  By default, the function is not required to be reentrant.
+    - `platform/random/nrf_802154_random_newlib.c` - uses the `rand_r()` function from newlib.
+      This function is reentrant.
+    - `platform/random/nrf_802154_random_zephyr.c` - uses the nrf entropy interface.
+
+@par Temperature
+    - `platform/temperature/nrf_802154_temperature_none.c` - reports a dummy temperature of 20 degrees Celsius.
+	  It prevents the use of the temperature RSSI correction by the driver.
+
+The remaining platform files are located in the 802.15.4 Service Layer.
+
+---
+@section rd_source_files_configuration Configuration
+The parameters of the driver can be adjusted in the `nrf_802154_config.h` config file.
+
+---
+@section rd_source_files_sl 802.15.4 Service Layer.
+
+The 802.15.4 radio driver is built to be used with the 802.15.4 Service Layer (SL) library.
+Two variants of this library are provided:
+    - An opensource SL library - providing reduced or stub functionalities.
+    - A closed-source SL library - providing full functionalities.
+
+The modules provided by the SL library are:
+    - Antenna diversity
+    - WiFi Coexistence
+    - Debug Logging
+    - Radio Scheduler
+    - Statistics
+    - Timer coordinator
+
+When using the opensource SL one, these modules are implemented either in a reduced or in a stub form.
+
+@note The closed-source SL library does not currently support nRF53 chips.
+      In this case, you must use the opensource SL library.
+
+The Service Layer also provides platform abstraction files, in addition to those provided by the radio driver:
+
+@par Clock
+    - `clock/nrf_802154_clock_nodrv.c` - uses the CLOCK peripheral directly.
+    - `clock/nrf_802154_clock_sdk.c` - uses the clock driver from the nRF5 SDK.
+
+@par High Precision Timer
+    - `hp_timer/nrf_802154_hp_timer.c` - uses a TIMER peripheral as a clock source for the high precision timer module.
+	  The peripheral is shared with the simulator of the SoftDevice Radio Arbiter Abstraction Layers (RAALs).
+
+@par Low Power Timer
+    - `lp_timer/nrf_802154_lp_timer.c` - uses an RTC peripheral as a clock source for the low power timer module.
+    - `lp_timer/nrf_802154_lp_timer_none.c` - it is a dummy driver.
+	  Select this implementation if none of the optional features that require the timer are enabled.
+
+@par IRQ
+    - `irq/nrf_802154_irq_baremetal.c` - uses the NVIC calls to configure interrupts.
+	  Use this file in bare-metal applications.
+    - `irq/nrf_802154_irq_zephyr.c` - uses the Zephyr RTOS calls to configure interrupts.
+	  Use this file in Zephyr RTOS.
+
+---
+@section rd_source_files_defines Defines
+
+Some features of the driver can be enabled using compile-time definitions.
+These definitions can be provided for the build through the `-D` compiler option.
+
+| Define    | Description |
+| --------- | ----------- |
+| ENABLE_DEBUG_LOG  | This option provides an array containing events logged by the driver. See the debug mode page for information about how to decode the logs. |
+| ENABLE_DEBUG_ASSERT  | This option disables all IRQs on an assert and enters an indefinite loop. It is helpful when used in combination with the ENABLE_DEBUG_LOG option, as it prevents the update of logs from IRQ handlers after the assertion fails. |
+| ENABLE_DEBUG_GPIO  | This option connects RADIO events to the GPIO output. It allows event timing measurements using a logic analyzer. |
+| ENABLE_FEM | Enable this option when the @ref rd_fem "Front-End Module support" is required. |
+| NRF5340_XXAA_NETWORK | Enable this option to build code for the network core of the nRF5340 |
+| NRF52840_XXAA | Enable this option to build code for the nRF52840. |
+| NRF52833_XXAA | Enable this option to build code for the nRF52833. |
+| NRF52811_XXAA | Enable this option to build code for the nRF52811. |
+
+*/

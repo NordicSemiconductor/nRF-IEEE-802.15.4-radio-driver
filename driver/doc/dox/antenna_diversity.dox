@@ -1,0 +1,180 @@
+/**
+
+@page ant_diversity Antenna diversity
+
+The antenna diversity module allows an 802.15.4 radio device to select the appropriate antenna for
+transmission or reception, when the device is equipped with two antennas
+to improve the radio communication parameters in difficult radio environments.
+For such devices, the antenna diversity module is used for controlling the antennas.
+
+@tableofcontents
+
+@section doc_ant_diversity_introduction Introduction
+
+The antenna diversity module interfaces with a Front-End Module (FEM), which controls both antennas
+through a single ANT pin used for antenna selection.
+The FEM must provide the capability to switch between antennas, but does not have to be limited to that.
+This allows even for a simple binary analog switch to act as FEM for antenna diversity.
+
+There is a number of approaches that can be used to switch the antenna in order to minimize
+the effect of phenomena that negatively impact radio communication,
+such as multiple reflections on radio path, multipath fading, and antenna cross-polarization.
+
+In case of reception, the @ref doc_ant_diversity_algorithm "approach implemented by this module" is based on RSSI measurements 
+during the preamble of the received frame.
+
+For transmission, the driver provides the interface for the higher layer to implement its own algorithm for antenna selection.
+The same interface is provided for reception in case the higher layer also wants to implement its own algorithm for reception.
+See @ref doc_ant_diversity_modes "information about the manual mode" for details.
+
+---
+
+@section doc_ant_diversity_hw_setup Hardware setup
+
+In the antenna diversity module hardware setup, the ANT pin of the device must be connected to the RF interface of FEM.
+
+If FEM provides other pins, they are not handled by the antenna diversity module.
+These can include, for example, pins for enabling chip, configuration, or for other operations.
+
+@image html ant_diversity/ant_diversity_interface.svg "Multiple antenna setup for antenna diversity module"
+
+---
+
+@section doc_ant_diversity_modes Modes
+
+The antenna diversity module supports all radio operations, grouped into
+reception-related (rx) operations and transmission-related (tx) operations:
+- Transmission-related operations include:
+    - Frame transmission
+    - Standalone CCA
+    - ACK reception
+    - Continuous carrier mode
+    - Modulated carrier mode
+- Reception-related operations include:
+    - Frame reception
+    - Energy detection
+    - ACK transmission
+
+This grouping is related to the different approach to both operation types:
+- The best antenna for rx operations can be determined on an operation-to-operation basis, for example by measuring the RSSI.
+- The best antenna for tx operations can be selected only based on additional information, for example results of previous operations.
+
+@note The requirement of knowing the results of previous operations is out of scope of the radio driver and should be implemented by a higher level module.
+
+Because of these different approaches, the following modes of operation are available for tx and rx operations:
+- Disabled - In this mode, the antenna is not changed for the given operation, and an unspecified antenna is used.
+- Manual - In this mode, a specific antenna is selected for the given operation.
+- Automatic - In this mode, the optimal antenna is selected for each individual rx operation.
+  This mode is only supported for rx operations.
+  
+To summarize, both parts can be individually disabled or enabled in any of the supported modes.
+
+@image html ant_diversity/ant_diversity_manual.png "Antenna selection with rx and tx both in manual mode. Both rx_ant and tx_ant can be either antenna 1 or antenna 2"
+
+---
+
+@section doc_ant_diversity_algorithm Rx automatic mode algorithm
+
+This section describes specific algorithms for each operation in rx automatic mode.
+
+@subsection doc_ant_diversity_frame_reception Frame reception
+
+When the mode for reception is set to automatic and the receiver is turned on, antennas are toggled
+in constant intervals until a preamble is detected.
+GPIOTE and PPI channels are used for this toggling.
+
+Once the radio driver reports a preamble detection, RSSI is measured for each antenna,
+and the antenna with higher RSSI is selected for the reception of the remaining 
+part of the frame.
+
+If the detected preamble turns out to be a false positive (for example, through time-out),
+the radio driver should notify the antenna diversity module.
+When either the time-out or the end of the received frame occurs, the antenna diversity module starts toggling the antenna again.
+
+The automatic antenna selection algorithm for reception is based on a state machine, with state transitions
+triggered either internally or by radio driver in response to the following events:
+ - Enabling antenna diversity automatic mode
+ - Disabling antenna diversity automatic mode
+ - Enabling radio receiver
+ - Disabling radio receiver
+ - Detecting preamble
+ - Detecting start of PSDU
+ - Detecting end of PSDU
+ - Timing out detected preamble
+
+@image html ant_diversity/ant_diversity_rx_procedure.png "Simplified state machine used for automatic antenna selection for reception"
+
+@note
+It is theoretically possible that both RSSI values cannot be measured before the PHR field of the frame is received
+(for example, due to a late preamble detection).
+For the sake of simplicity, this case is not represented in the state diagram.
+In such case, the following takes place:
+- The antenna for reception is unspecified.
+- The module notifies the radio driver that the algorithm did not have enough time to finish. 
+- The frame reception proceeds as normal.
+
+@subsubsection doc_ant_diversity_notification Notification
+
+In the antenna diversity automatic mode, the antenna diversity module selects the best antenna for the reception operation (or leaves it unspecified, as stated in the note above).
+After each reception, the antenna diversity module saves information about the best antenna.
+
+The information about the best antenna can be retrieved by a call to @ref nrf_802154_antenna_diversity_last_rx_best_antenna_get.
+In the following cases, ANTENNA_NONE value is returned instead of a specific antenna when calling this function:
+- No frame has been received yet.
+- Last frame has been received with the antenna diversity automatic mode for rx disabled.
+- There was not enough time between the detected preamble and the detected framestart to finish the RSSI measurements.
+  It is not specified which antenna was used in this case.
+
+@subsection doc_ant_diversity_ack_transmission ACK transmission
+
+The antenna used for ACK transmission is the same as for the reception of the frame being acknowledged,
+even if it was not specified which antenna was selected.
+
+@subsection doc_ant_diversity_energy_detection Energy detection
+
+When requesting energy detection in the automatic rx mode, the time of the procedure will be split in half by the antenna diversity module: 
+- The first half of the time requested by the API will be scheduled immediately.
+- The second half will be requested after the first half has finished. The antenna is switched before requesting the second half.
+
+The highest detected energy across both antennas is reported to the driver.
+
+@note
+In the manual mode, the energy detection is performed on a single antenna that is specified by the application with a call to @ref nrf_802154_antenna_diversity_rx_antenna_set.
+
+The energy detection procedure consists of a number of iterations that last 128 us each.
+Because of this, the time for the scheduled energy detection procedure cannot be shorter than 128 us.
+The procedures shorter than 256 us will be performed only using a single antenna, even in the automatic rx mode.
+In that case, it is not specified which antenna was used for energy detection.
+
+@image html ant_diversity/ant_diversity_energy_detection.png "Energy detection procedure with antenna diversity enabled"
+
+---
+
+@section doc_ant_diversity_timing Timing
+
+The following timings can be configured for the automatic antenna selection (default values are mentioned):
+- Toggle time - 40 us
+    - This is the time between the toggles of the antenna, while waiting for the preamble detection.
+    It can be configured by a call to @ref nrf_802154_antenna_diversity_config_set.
+    The default value is stored in the @ref NRF_802154_ANT_DIVERSITY_TOGGLE_TIME_DEFAULT macro.
+- Preamble time-out - 180 us
+    - This is the time after the preamble detection, in which the preamble is deemed to be false positive if no framestart arrives.
+
+@note The preamble time-out is managed by the radio driver, which then notifies the antenna diversity module about its expiration.
+The time-out can be configured with the @ref PRESTARTED_TIMER_TIMEOUT_US macro.
+
+The following timings are constant in the automatic antenna selection:
+- RSSI settle time - 15 us
+    - This is the time after the antenna switch, during which the RSSI measurement may not be valid.
+    - The RSSI settle time is hardware-dependent.
+- RSSI measurement time - 200 ns
+- Software lag during time-out configuration - 40-50 us
+
+@note
+Since the antenna does not change during the software lag, there is no need to wait for another 15 us for the RSSI to settle.
+
+@image html ant_diversity/ant_diversity_rx_timing.png "Timings of automatic antenna selection for frame reception"
+
+@image html ant_diversity/ant_diversity_rx_timeout.png "False positive on preamble detection scenario during automatic antenna selection"
+
+*/
